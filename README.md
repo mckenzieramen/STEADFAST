@@ -1,21 +1,22 @@
-# STEADFAST V5 — Real McKenzie Project Gallery
+# STEADFAST V6 — Original V2 Design + Real McKenzie Gallery
 
-Professional portfolio site for **STEADFAST by Cliff Jandee Medrano**.
+This build restores the original STEADFAST V2 visual/design system and changes only the McKenzie featured-project area to use the real project screenshots.
 
-## Real McKenzie Ramen House project
-Customer website: https://mckenzieramen.github.io/mckenzie-ramen-house/
-Admin dashboard: https://mckenzieramen.github.io/mckenzie-ramen-house/admin
+Preserved from V2:
+- Original premium hero, navigation, services, process, tools, quote, about/faith, FAQ, contact, footer and reviews styling/content.
+- Original typography, purple accent, dark/light section rhythm, cards, spacing, and responsive behavior.
 
-The portfolio gallery uses the provided real McKenzie Admin screenshots. Browser chrome/address bars were cropped out for a cleaner presentation. The gallery supports swipe/scroll on touch devices plus arrows and dots on desktop.
+Updated:
+- McKenzie Ramen House featured project now uses the real admin screenshots.
+- Swipe/scroll gallery with arrows and dots.
+- Browser/address-bar area is not shown as a fake browser frame.
+- Links open the real customer website and admin dashboard.
+- Ten real admin feature screens are included locally.
 
-The admin dashboard is an owner/admin area and may require authorized login credentials.
+Live customer website:
+https://mckenzieramen.github.io/mckenzie-ramen-house/
 
-## V5 changes
-- Added the real Admin Login screenshot.
-- Updated Dashboard, Products, Orders, Chat Support, Customers, Reviews, and Analytics with the latest provided screenshots.
-- Preserved Activity Log and Settings slides.
-- Cropped browser chrome from the newly provided screenshots.
-- Preserved swipeable gallery behavior.
+Live admin dashboard:
+https://mckenzieramen.github.io/mckenzie-ramen-house/admin
 
-## Baseline
-This V5 build is intended to become the new working baseline after approval.
+Baseline: V6 is the working baseline after approval.
