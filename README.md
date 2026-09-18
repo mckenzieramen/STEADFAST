@@ -16,3 +16,7 @@ V12 builds on V11 and keeps the existing design/features while changing the stic
 - Purple active/hover accent
 - Purple CTA retained
 - Mobile navigation updated for the white header
+
+
+## V14 update
+V12 visual baseline preserved. Added expanded Tools & Platforms section with business/admin, customer support, web development, and deployment/digital tools. White premium header retained.
