@@ -31,3 +31,17 @@ if(gallery && dots){
     });
   });
 }
+
+// V11 interactive service cards: click/tap toggles the same flip used on hover.
+document.querySelectorAll('.service-flip').forEach(card => {
+  card.addEventListener('click', (event) => {
+    if (event.target.closest('a')) return;
+    card.classList.toggle('is-flipped');
+  });
+  card.addEventListener('keydown', (event) => {
+    if ((event.key === 'Enter' || event.key === ' ') && !event.target.closest('a')) {
+      event.preventDefault();
+      card.classList.toggle('is-flipped');
+    }
+  });
+});
