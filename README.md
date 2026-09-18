@@ -1,19 +1,23 @@
-# STEADFAST V7 — Original Design + Official McKenzie Project
+# STEADFAST V8 — Consistent Original Baseline
 
-This version starts from the exact `STEADFAST-MERGED-Ready(1).zip` baseline. The original STEADFAST page design is preserved; only the brand mark and Featured Project presentation are updated.
+V8 uses STEADFAST V6 as the locked visual/design baseline and incorporates only the requested V7 project updates.
 
-Featured Project updates:
-- Uses the actual McKenzie Ramen House customer website screenshots supplied by the owner.
-- Browser/address-bar chrome is cropped out.
-- Customer homepage and online menu appear first.
-- Real admin screens follow: Dashboard, Products, Orders, Chat Support, Customers, Reviews, Analytics, Activity Log, Settings.
-- Swipe/drag works on touch devices; desktop has arrows and dots.
-- Live customer and admin buttons open the actual McKenzie project.
+## Locked design
+- Original STEADFAST V6 visual system is retained.
+- No redesign/rearrangement of unrelated sections.
+- Original hero, services, process, tools, quote, about, faith, FAQ, contact, footer and reviews remain intact.
 
-Brand update:
-- STEADFAST #9 Abstract Foundation mark is used in the header and favicon.
+## McKenzie Featured Project updates
+- Official customer homepage screenshot added.
+- Official online menu screenshot added.
+- Real admin feature screenshots retained.
+- Browser/address bars are cropped out of the project images.
+- Swipe/drag gallery on mobile and desktop.
+- Previous/next arrows and slide dots.
+- Real customer website and admin dashboard links.
 
 Customer website: https://mckenzieramen.github.io/mckenzie-ramen-house/
 Admin dashboard: https://mckenzieramen.github.io/mckenzie-ramen-house/admin
 
-Baseline: V7 after approval.
+## Baseline
+This V8 build is the working baseline for future edits after user approval. Future changes must preserve the V8 design and modify only explicitly requested areas.
