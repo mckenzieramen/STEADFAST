@@ -162,6 +162,6 @@ footer{border-top:1px solid #ffffff0a}
 
 /* Accurate brand-mark treatment for Tools & Platforms */
 .tool-items > span{min-height:44px;}
-.tool-logo-img{width:25px;height:25px;display:block;flex:0 0 25px;object-fit:contain;}
+.tool-logo-img{width:25px;height:25px;display:block;flex:0 0 25px;object-fit:contain;border-radius:5px;background:#fff;}
 .neutral-logo{background:#f1f2f4!important;color:#59606b!important;border:1px solid #e0e2e7;font-size:8px!important;}
 @media(max-width:640px){.tool-logo-img{width:28px;height:28px;flex-basis:28px;}}
