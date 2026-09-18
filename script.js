@@ -1,9 +1,54 @@
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-function toast(msg){const t=$("#toast");if(!t)return;t.textContent=msg;t.classList.add("show");clearTimeout(window.__toast);window.__toast=setTimeout(()=>t.classList.remove("show"),3600)}
-const menu=$(".menu-toggle"),nav=$("#nav");if(menu&&nav){menu.addEventListener("click",()=>{const open=nav.classList.toggle("open");menu.setAttribute("aria-expanded",open)});$$('.nav a').forEach(a=>a.addEventListener('click',()=>{nav.classList.remove('open');menu.setAttribute('aria-expanded','false')}))}
+function toast(msg){const t=$("#toast");if(!t)return;t.textContent=msg;t.classList.add("show");clearTimeout(window.__steadfastToast);window.__steadfastToast=setTimeout(()=>t.classList.remove("show"),3200)}
+const menu=$(".menu-toggle"),nav=$("#nav"); if(menu) menu.addEventListener("click",()=>{const open=nav.classList.toggle("open");menu.setAttribute("aria-expanded",open?"true":"false")});
+$$(".nav a").forEach(a=>a.addEventListener("click",()=>{if(nav)nav.classList.remove("open");if(menu)menu.setAttribute("aria-expanded","false")}));
+
 const quoteForm=$("#quoteForm");
-if(quoteForm){const base={"Admin Support":150,"Customer Service":175,"Web Solutions":300,"Admin + Customer Service":275,"Full Support Package":450,"Custom Quote":0};function calc(){const service=$("#service").value;if(service==='Custom Quote'){$("#estimate").textContent='Custom';$("#estimateNote").textContent='Tell me what you need and I’ll prepare a custom quote.';return}let v=base[service]*parseFloat($("#size").value);$$('.checks input:checked').forEach(x=>v+=Number(x.value));$("#estimate").textContent='$'+Math.round(v);$("#estimateNote").textContent='Starting estimate only — final pricing depends on scope and requirements.'}['service','size'].forEach(id=>$("#"+id).addEventListener('change',calc));$$('.checks input').forEach(x=>x.addEventListener('change',calc));calc();quoteForm.addEventListener('submit',e=>{e.preventDefault();const data={service:$("#service").value,scope:$("#size").selectedOptions[0].text,estimate:$("#estimate").textContent,addons:$$('.checks input:checked').map(x=>x.parentElement.textContent.trim()),created:new Date().toISOString()};localStorage.setItem('steadfastLastQuote',JSON.stringify(data));toast('Quote saved. Scroll to Contact to turn this into an inquiry.');setTimeout(()=>location.hash='contact',500)})}
-const contactForm=$("#contactForm");if(contactForm){contactForm.addEventListener('submit',e=>{e.preventDefault();const quote=JSON.parse(localStorage.getItem('steadfastLastQuote')||'null');const data={name:$("#contactName").value.trim(),email:$("#contactEmail").value.trim(),service:$("#contactService").value,message:$("#contactMessage").value.trim(),quote,created:new Date().toISOString()};localStorage.setItem('steadfastLastInquiry',JSON.stringify(data));toast('Inquiry prepared and saved in this browser. Backend connection can be added when your email/Firebase endpoint is ready.');contactForm.reset()})}
-const defaultReviews=[];let selectedRating=0;const list=$("#reviewList");
-if(list){const stored=JSON.parse(localStorage.getItem('steadfastReviews')||'[]');const reviews=[...defaultReviews,...stored];function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}function initials(n){return String(n).trim().split(/\s+/).map(x=>x[0]).join('').slice(0,2).toUpperCase()||'CL'}function render(){if(!reviews.length){list.innerHTML='<div class="empty-reviews"><div>★</div><h3>Your first review can go here.</h3><p>Once a real client submits feedback, it will appear in this section.</p></div>'}else{list.innerHTML=reviews.map(r=>`<article class="review-card"><div class="stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div><p>“${esc(r.msg||'No written comment provided.')}”</p><div class="review-author"><div class="avatar">${initials(r.name)}</div><div><strong>${esc(r.name)}</strong><small>${esc(r.role||'Client')} · ${esc(r.date||'Today')}</small></div></div></article>`).join('')}const count=reviews.length;$("#reviewCount").textContent=count;if(count){const avg=reviews.reduce((a,b)=>a+b.rating,0)/count;$("#ratingAverage").textContent=avg.toFixed(1)}for(let s=1;s<=5;s++){const c=reviews.filter(r=>r.rating===s).length,p=count?Math.round(c/count*100):0;const bar=$("#bar"+s),pct=$("#pct"+s);if(bar)bar.style.width=p+'%';if(pct)pct.textContent=p+'%'}}render();$$('.star-picker button').forEach(btn=>btn.addEventListener('click',()=>{selectedRating=Number(btn.dataset.star);$$('.star-picker button').forEach(b=>b.textContent=Number(b.dataset.star)<=selectedRating?'★':'☆')}));const rf=$("#reviewForm");if(rf)rf.addEventListener('submit',e=>{e.preventDefault();if(!selectedRating){toast('Please choose a star rating first.');return}const review={name:$("#reviewName").value.trim(),role:$("#reviewRole").value.trim()||'Client',date:new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}),rating:selectedRating,msg:$("#reviewMessage").value.trim()||'Great experience working with STEADFAST.'};stored.push(review);localStorage.setItem('steadfastReviews',JSON.stringify(stored));reviews.push(review);render();rf.reset();selectedRating=0;$$('.star-picker button').forEach(b=>b.textContent='☆');toast('Thank you! Your review was added in this browser.')})}
-$$('details').forEach(d=>d.addEventListener('toggle',()=>{if(d.open)$$('details').filter(x=>x!==d).forEach(x=>x.removeAttribute('open'))}));
+if(quoteForm){
+ const base={ "Admin Support":150,"Customer Service":175,"Web Solutions":300,"Admin + Customer Service":275,"Full Support Package":450 };
+ function calc(){let v=(base[$("#service").value]||150)*parseFloat($("#size").value);$$(".checks input:checked").forEach(x=>v+=+x.value);$("#estimate").textContent="$"+Math.round(v);}
+ ["service","size"].forEach(id=>$("#"+id).addEventListener("change",calc));$$(".checks input").forEach(x=>x.addEventListener("change",calc));calc();
+ quoteForm.addEventListener("submit",e=>{
+  e.preventDefault();
+  const data={
+    service:$("#service").value,
+    scope:$("#size").selectedOptions[0].text,
+    estimate:$("#estimate").textContent,
+    addons:$$(".checks input:checked").map(x=>x.parentElement.textContent.trim()),
+    created:new Date().toISOString()
+  };
+  localStorage.setItem("steadfastLastQuote",JSON.stringify(data));
+  toast("Quote request prepared and saved. You can continue with Contact.");
+  setTimeout(()=>location.hash="contact",450);
+});
+}
+const contactForm=$("#contactForm");
+if(contactForm) contactForm.addEventListener("submit",e=>{e.preventDefault();toast("Thanks! Your inquiry form is ready to connect to your email/Firebase.");contactForm.reset()});
+
+const defaultReviews=[
+ {name:"Janelle M.",role:"Small Business Owner",date:"Sep 12, 2025",rating:5,msg:"Cliff is very reliable and easy to work with. He communicates well and always delivers on time. Highly recommended!"},
+ {name:"Ryan T.",role:"E-commerce Store Owner",date:"Aug 28, 2025",rating:5,msg:"Amazing support! He helped me set up my website and made the whole process smooth and stress-free."},
+ {name:"Liza C.",role:"Restaurant Business Owner",date:"Aug 15, 2025",rating:5,msg:"Professional, responsive, and detail-oriented. STEADFAST truly lives up to its name."},
+ {name:"Mark D.",role:"Startup Founder",date:"Aug 10, 2025",rating:5,msg:"Great customer service and very patient with revisions. The website looks amazing!"},
+ {name:"Alyssa P.",role:"Online Seller",date:"Jul 25, 2025",rating:5,msg:"Cliff went above and beyond to help us. Super efficient and easy to communicate with. Will definitely work again!"},
+ {name:"Kevin B.",role:"Entrepreneur",date:"Jul 18, 2025",rating:5,msg:"Not just a VA, but a true partner in growing our business. Highly recommended!"}
+];
+let selectedRating=0;
+const list=$("#reviewList");
+if(list){
+ const stored=JSON.parse(localStorage.getItem("steadfastReviews")||"[]");
+ const reviews=[...defaultReviews,...stored];
+ function initials(n){return n.split(/\s+/).map(x=>x[0]).join("").slice(0,2).toUpperCase()}
+ function render(){
+   list.innerHTML=reviews.map(r=>`<article class="review-card"><div class="stars">${"★".repeat(r.rating)}${"☆".repeat(5-r.rating)}</div><p>“${escapeHtml(r.msg||"No written comment provided.")}”</p><div class="review-author"><div class="avatar">${initials(r.name)}</div><div><strong>${escapeHtml(r.name)}</strong><small>${escapeHtml(r.role||"Client")} · ${escapeHtml(r.date||"Today")}</small></div></div></article>`).join("");
+   const count=reviews.length, avg=reviews.reduce((a,b)=>a+b.rating,0)/count;
+   $("#ratingAverage").textContent=avg.toFixed(1);$("#reviewCount").textContent=count;
+   for(let s=1;s<=5;s++){const c=reviews.filter(r=>r.rating===s).length,p=Math.round(c/count*100);$("#bar"+s).style.width=p+"%";$("#pct"+s).textContent=p+"%"}
+ }
+ function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]))}
+ render();
+ $$(".star-picker button").forEach(btn=>btn.addEventListener("click",()=>{selectedRating=+btn.dataset.star;$$(".star-picker button").forEach(b=>b.textContent=+b.dataset.star<=selectedRating?"★":"☆")}));
+ const rf=$("#reviewForm");
+ rf.addEventListener("submit",e=>{e.preventDefault();if(!selectedRating){toast("Please choose a star rating first.");return}const review={name:$("#reviewName").value.trim(),role:"Client",date:new Date().toLocaleDateString("en-US",{month:"short",day:"numeric",year:"numeric"}),rating:selectedRating,msg:$("#reviewMessage").value.trim()||"Great experience working with STEADFAST."};stored.push(review);localStorage.setItem("steadfastReviews",JSON.stringify(stored));reviews.push(review);render();rf.reset();selectedRating=0;$$(".star-picker button").forEach(b=>b.textContent="☆");toast("Thank you! Your review has been added.");});
+}
+const gallery=document.querySelector('#mckenzieGallery'),dots=document.querySelector('#mckenzieDots');if(gallery&&dots){const slides=[...gallery.querySelectorAll('.gallery-slide')];slides.forEach((_,i)=>{const b=document.createElement('button');b.type='button';b.className='gallery-dot'+(i===0?' active':'');b.setAttribute('aria-label','Show project screen '+(i+1));b.onclick=()=>gallery.scrollTo({left:i*gallery.clientWidth,behavior:'smooth'});dots.appendChild(b)});const update=()=>{const i=Math.round(gallery.scrollLeft/Math.max(1,gallery.clientWidth));dots.querySelectorAll('.gallery-dot').forEach((d,n)=>d.classList.toggle('active',n===i))};gallery.addEventListener('scroll',()=>requestAnimationFrame(update),{passive:true});document.querySelector('[data-gallery-prev]')?.addEventListener('click',()=>gallery.scrollBy({left:-gallery.clientWidth,behavior:'smooth'}));document.querySelector('[data-gallery-next]')?.addEventListener('click',()=>gallery.scrollBy({left:gallery.clientWidth,behavior:'smooth'}))}

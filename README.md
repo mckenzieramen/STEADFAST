@@ -1,22 +1,19 @@
-# STEADFAST V6 — Original V2 Design + Real McKenzie Gallery
+# STEADFAST V7 — Original Design + Official McKenzie Project
 
-This build restores the original STEADFAST V2 visual/design system and changes only the McKenzie featured-project area to use the real project screenshots.
+This version starts from the exact `STEADFAST-MERGED-Ready(1).zip` baseline. The original STEADFAST page design is preserved; only the brand mark and Featured Project presentation are updated.
 
-Preserved from V2:
-- Original premium hero, navigation, services, process, tools, quote, about/faith, FAQ, contact, footer and reviews styling/content.
-- Original typography, purple accent, dark/light section rhythm, cards, spacing, and responsive behavior.
+Featured Project updates:
+- Uses the actual McKenzie Ramen House customer website screenshots supplied by the owner.
+- Browser/address-bar chrome is cropped out.
+- Customer homepage and online menu appear first.
+- Real admin screens follow: Dashboard, Products, Orders, Chat Support, Customers, Reviews, Analytics, Activity Log, Settings.
+- Swipe/drag works on touch devices; desktop has arrows and dots.
+- Live customer and admin buttons open the actual McKenzie project.
 
-Updated:
-- McKenzie Ramen House featured project now uses the real admin screenshots.
-- Swipe/scroll gallery with arrows and dots.
-- Browser/address-bar area is not shown as a fake browser frame.
-- Links open the real customer website and admin dashboard.
-- Ten real admin feature screens are included locally.
+Brand update:
+- STEADFAST #9 Abstract Foundation mark is used in the header and favicon.
 
-Live customer website:
-https://mckenzieramen.github.io/mckenzie-ramen-house/
+Customer website: https://mckenzieramen.github.io/mckenzie-ramen-house/
+Admin dashboard: https://mckenzieramen.github.io/mckenzie-ramen-house/admin
 
-Live admin dashboard:
-https://mckenzieramen.github.io/mckenzie-ramen-house/admin
-
-Baseline: V6 is the working baseline after approval.
+Baseline: V7 after approval.
