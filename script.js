@@ -1,14 +1,26 @@
 const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
-function toast(msg){const t=$("#toast");if(!t)return;t.textContent=msg;t.classList.add("show");setTimeout(()=>t.classList.remove("show"),3200)}
-const menu=$(".menu-toggle"),nav=$("#nav"); if(menu) menu.addEventListener("click",()=>nav.classList.toggle("open"));
-$$(".nav a").forEach(a=>a.addEventListener("click",()=>nav&&nav.classList.remove("open")));
+function toast(msg){const t=$("#toast");if(!t)return;t.textContent=msg;t.classList.add("show");clearTimeout(window.__steadfastToast);window.__steadfastToast=setTimeout(()=>t.classList.remove("show"),3200)}
+const menu=$(".menu-toggle"),nav=$("#nav"); if(menu) menu.addEventListener("click",()=>{const open=nav.classList.toggle("open");menu.setAttribute("aria-expanded",open?"true":"false")});
+$$(".nav a").forEach(a=>a.addEventListener("click",()=>{if(nav)nav.classList.remove("open");if(menu)menu.setAttribute("aria-expanded","false")}));
 
 const quoteForm=$("#quoteForm");
 if(quoteForm){
  const base={ "Admin Support":150,"Customer Service":175,"Web Solutions":300,"Admin + Customer Service":275,"Full Support Package":450 };
  function calc(){let v=(base[$("#service").value]||150)*parseFloat($("#size").value);$$(".checks input:checked").forEach(x=>v+=+x.value);$("#estimate").textContent="$"+Math.round(v);}
  ["service","size"].forEach(id=>$("#"+id).addEventListener("change",calc));$$(".checks input").forEach(x=>x.addEventListener("change",calc));calc();
- quoteForm.addEventListener("submit",e=>{e.preventDefault();toast("Quote request prepared. Connect this form to email or Firebase next.");});
+ quoteForm.addEventListener("submit",e=>{
+  e.preventDefault();
+  const data={
+    service:$("#service").value,
+    scope:$("#size").selectedOptions[0].text,
+    estimate:$("#estimate").textContent,
+    addons:$$(".checks input:checked").map(x=>x.parentElement.textContent.trim()),
+    created:new Date().toISOString()
+  };
+  localStorage.setItem("steadfastLastQuote",JSON.stringify(data));
+  toast("Quote request prepared and saved. You can continue with Contact.");
+  setTimeout(()=>location.hash="contact",450);
+});
 }
 const contactForm=$("#contactForm");
 if(contactForm) contactForm.addEventListener("submit",e=>{e.preventDefault();toast("Thanks! Your inquiry form is ready to connect to your email/Firebase.");contactForm.reset()});
