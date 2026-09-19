@@ -30,12 +30,3 @@ Authorized account currently configured:
 
 Before deployment, replace the Firebase placeholders in `admin/auth.js` and `admin/dashboard.js`, enable Google Authentication in Firebase, and add the deployed domain to Firebase Authentication Authorized Domains.
 
-
-
-## Firestore quotation integration
-This build connects the Website Quotation form to the STEADFAST Firebase project `steadfast-1d0e6`.
-- Customer submissions are stored in `quotations`.
-- The Admin Dashboard listens for live quotation updates.
-- Only `yahhclffjnd@gmail.com` is authorized to read/update/delete quotation records.
-- Public visitors can create quotation records after the Firestore rules in `firestore.rules` are published.
-- Email automation, Gmail OAuth, customer chat, and meeting scheduling are intentionally not enabled in this phase.
