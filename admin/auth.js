@@ -1,5 +1,4 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-
 import {
   getAuth,
   GoogleAuthProvider,
@@ -7,11 +6,6 @@ import {
   onAuthStateChanged,
   signOut
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-
-/*
-  STEADFAST ADMIN AUTH
-  Firebase project: steadfast-1d0e6
-*/
 
 const firebaseConfig = {
   apiKey: "AIzaSyD13MXR0ZQSjPJBxQKYPmsMKjl4yzU2hSs",
@@ -22,137 +16,70 @@ const firebaseConfig = {
   appId: "1:488385339804:web:0d2bcf3967a8f95ccfe859"
 };
 
-/*
-  Only this Google account is allowed
-  to continue to the STEADFAST Admin Dashboard.
-*/
-const AUTHORIZED_EMAILS = [
-  "yahhclffjnd@gmail.com"
-];
-
+const AUTHORIZED_EMAILS = ["yahhclffjnd@gmail.com"];
 const message = document.getElementById("authMessage");
 const button = document.getElementById("googleSignIn");
 
 function setMessage(text = "", type = "") {
   if (!message) return;
-
   message.textContent = text;
   message.className = `auth-message ${type}`.trim();
 }
 
 function setButtonText(text) {
-  if (!button) return;
-
-  const textElement = button.querySelector("span:last-child");
-
-  if (textElement) {
-    textElement.textContent = text;
-  }
+  const target = button?.querySelector("span:last-child");
+  if (target) target.textContent = text;
 }
 
 function isAuthorized(email) {
-  return AUTHORIZED_EMAILS
-    .map(value => value.toLowerCase().trim())
-    .includes((email || "").toLowerCase().trim());
+  return AUTHORIZED_EMAILS.includes((email || "").toLowerCase().trim());
 }
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
+provider.setCustomParameters({ prompt: "select_account" });
 
-provider.setCustomParameters({
-  prompt: "select_account"
-});
-
-/*
-  Check whether the user is already authenticated.
-*/
 onAuthStateChanged(auth, async (user) => {
-  if (!user) {
-    return;
-  }
-
+  if (!user) return;
   const email = (user.email || "").toLowerCase().trim();
-
   if (!isAuthorized(email)) {
-    setMessage(
-      `Access denied for ${email}. This Google account is not authorized.`,
-      "error"
-    );
-
+    setMessage(`Access denied for ${email}. This Google account is not authorized.`, "error");
     await signOut(auth);
     return;
   }
-
   window.location.replace("./dashboard.html");
 });
 
-/*
-  Google Sign-In
-*/
-if (button) {
-  button.addEventListener("click", async () => {
-    setMessage("");
-    button.disabled = true;
-    setButtonText("Signing in…");
-
-    try {
-      const result = await signInWithPopup(auth, provider);
-
-      const email = (result.user.email || "")
-        .toLowerCase()
-        .trim();
-
-      if (!isAuthorized(email)) {
-        await signOut(auth);
-
-        setMessage(
-          `Access denied for ${email}. This Google account is not authorized.`,
-          "error"
-        );
-
-        return;
-      }
-
-      setMessage("Login successful. Opening Admin Dashboard…", "success");
-
-      window.location.replace("./dashboard.html");
-
-    } catch (error) {
-      console.error("STEADFAST Google Sign-In Error:", error);
-
-      if (error.code === "auth/popup-closed-by-user") {
-        setMessage("Sign-in was cancelled.", "error");
-
-      } else if (error.code === "auth/popup-blocked") {
-        setMessage(
-          "Your browser blocked the Google sign-in popup. Please allow popups and try again.",
-          "error"
-        );
-
-      } else if (error.code === "auth/unauthorized-domain") {
-        setMessage(
-          "This website domain is not authorized in Firebase Authentication.",
-          "error"
-        );
-
-      } else if (error.code === "auth/operation-not-allowed") {
-        setMessage(
-          "Google Sign-In is not enabled in Firebase Authentication.",
-          "error"
-        );
-
-      } else {
-        setMessage(
-          error.message ||
-          "Google sign-in could not be completed. Please check the Firebase configuration.",
-          "error"
-        );
-      }
-
-    } finally {
-      button.disabled = false;
-      setButtonText("Continue with Google");
+button?.addEventListener("click", async () => {
+  setMessage("");
+  button.disabled = true;
+  setButtonText("Signing in…");
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const email = (result.user.email || "").toLowerCase().trim();
+    if (!isAuthorized(email)) {
+      await signOut(auth);
+      setMessage(`Access denied for ${email}. This Google account is not authorized.`, "error");
+      return;
     }
-  });
-}
+    setMessage("Login successful. Opening Admin Dashboard…", "success");
+    window.location.replace("./dashboard.html");
+  } catch (error) {
+    console.error("STEADFAST Google Sign-In Error:", error);
+    if (error.code === "auth/popup-closed-by-user") {
+      setMessage("Sign-in was cancelled.", "error");
+    } else if (error.code === "auth/popup-blocked") {
+      setMessage("Your browser blocked the Google sign-in popup. Please allow popups and try again.", "error");
+    } else if (error.code === "auth/unauthorized-domain") {
+      setMessage("This website domain is not authorized in Firebase Authentication.", "error");
+    } else if (error.code === "auth/operation-not-allowed") {
+      setMessage("Google Sign-In is not enabled in Firebase Authentication.", "error");
+    } else {
+      setMessage(error.message || "Google sign-in could not be completed. Please check the Firebase Authentication setup.", "error");
+    }
+  } finally {
+    button.disabled = false;
+    setButtonText("Continue with Google");
+  }
+});
