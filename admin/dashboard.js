@@ -404,8 +404,8 @@ let authHandled = false;
 let authFallbackTimer = null;
 
 function finishAdminAuth(user){
-  if(authHandled) return;
-  authHandled = true;
+  if(authHandled && !user) return;
+  if(user) authHandled = true;
   if(authFallbackTimer) clearTimeout(authFallbackTimer);
   if(!user){
     setAdminLoading('Redirecting to Admin Login…', true);
@@ -433,18 +433,46 @@ function finishAdminAuth(user){
   stopQuotationListener=subscribeToQuotations();
 }
 
-async function initAdminAuth(){
+function initAdminAuth(){
   try{
-    await setPersistence(auth,browserLocalPersistence).catch(()=>{});
-    const existingUser=auth.currentUser;
-    if(existingUser) finishAdminAuth(existingUser);
-    onAuthStateChanged(auth,(user)=>finishAdminAuth(user));
-    authFallbackTimer=setTimeout(()=>finishAdminAuth(auth.currentUser),5000);
+    setAdminLoading('Checking your admin session…');
+
+    // Start the observer first. Waiting on setPersistence before registering the
+    // observer can leave the header stuck on “Authenticating…” on slower browsers.
+    onAuthStateChanged(auth,(user)=>{
+      if(user){
+        finishAdminAuth(user);
+      }else{
+        // Firebase has finished restoring the session and there is no admin user.
+        setAdminLoading('No active admin session. Redirecting to login…', true);
+        setTimeout(()=>window.location.replace('./index.html'),350);
+      }
+    });
+
+    setPersistence(auth,browserLocalPersistence).catch((error)=>{
+      console.warn('STEADFAST auth persistence could not be enabled:',error);
+    });
+
+    // If Firebase is unusually slow, do not leave the entire page covered forever.
+    // Firestore rules still protect the data; this only prevents a permanent UI lock.
+    setTimeout(()=>{
+      const loader=document.getElementById('adminLoading');
+      if(loader && !loader.classList.contains('hidden')){
+        const current=auth.currentUser;
+        if(current){
+          finishAdminAuth(current);
+        }else{
+          setAdminLoading('Authentication is taking longer than expected…', true);
+          if(adminName)adminName.textContent='STEADFAST Admin';
+          if(adminEmail)adminEmail.textContent='Session check pending';
+        }
+      }
+    },3500);
   }catch(error){
     console.error('STEADFAST admin auth initialization failed:',error);
     if(adminName)adminName.textContent='Authentication error';
-    if(adminEmail)adminEmail.textContent='Please reload the Admin Dashboard';
-    setAdminLoading('Authentication could not be completed. Please reload.', true);
+    if(adminEmail)adminEmail.textContent='Session check failed';
+    setAdminLoading('Authentication could not be completed. You can still use the menu while the session reconnects.', true);
   }
 }
 
