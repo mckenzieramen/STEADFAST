@@ -18,7 +18,7 @@ const firebaseConfig = {
   appId: "1:488385339804:web:0d2bcf3967a8f95ccfe859"
 };
 
-const AUTHORIZED_EMAILS = ["yahhclifjnd@gmail.com"];
+const AUTHORIZED_EMAILS = ["yahhclffjnd@gmail.com"];
 const message = document.getElementById("authMessage");
 const button = document.getElementById("googleSignIn");
 
