@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>STEADFAST Admin Dashboard</title>
+<link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+<div class="app">
+<aside class="sidebar" id="sidebar">
+  <div class="side-brand"><span class="mark">S</span><div><strong>STEADFAST</strong><small>ADMIN</small></div></div>
+  <nav id="nav">
+    <button class="active" data-view="dashboard">⌂ <span>Dashboard</span></button>
+    <button data-view="quotations">▣ <span>Quotations</span></button>
+    <button data-view="leads">◉ <span>Leads</span></button>
+    <button data-view="clients">◎ <span>Clients</span></button>
+    <button data-view="email">✉ <span>Email / Gmail</span></button>
+    <button data-view="crm">↗ <span>CRM Integration</span></button>
+    <button data-view="analytics">▥ <span>Analytics</span></button>
+    <button data-view="settings">⚙ <span>Settings</span></button>
+  </nav>
+  <div class="side-bottom"><div class="profile"><span>CM</span><div><b>Cliff Jandee Medrano</b><small>Admin · Online</small></div></div><button id="logout">↪ Logout</button></div>
+</aside>
+<button class="mobile-menu" id="mobileMenu">☰</button>
+<main class="content">
+<header><div><p class="eyebrow">STEADFAST ADMIN</p><h1 id="pageTitle">Welcome back, Cliff!</h1><p id="pageSub">Here’s what’s happening with your website inquiries today.</p></div><div class="head-actions"><input id="search" placeholder="Search quotations, clients..."><button class="bell">♢<i>3</i></button><a href="../index.html" class="website">View Website ↗</a></div></header>
+<section id="view" class="view"></section>
+</main>
+</div>
+<script type="module" src="dashboard.js"></script>
+</body>
+</html>
