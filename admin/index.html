@@ -1,0 +1,84 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#080d1b">
+  <title>STEADFAST Admin — Dashboard</title>
+  <link rel="stylesheet" href="admin.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand-lockup" data-route="dashboard" role="button" tabindex="0" aria-label="STEADFAST Dashboard">
+        <div class="brand-mark" aria-hidden="true"><span></span><i></i><b></b></div>
+        <div><strong>STEADFAST</strong><small>WEB SOLUTIONS THAT WORK</small></div>
+      </div>
+      <nav class="side-nav" aria-label="Admin navigation">
+        <button class="nav-item active" data-route="dashboard"><span>⌂</span>Dashboard</button>
+        <button class="nav-item" data-route="quotations"><span>▤</span>Quotations</button>
+        <button class="nav-item" data-route="leads"><span>♙</span>Leads</button>
+        <button class="nav-item" data-route="clients"><span>♙</span>Clients</button>
+        <button class="nav-item" data-route="email"><span>✉</span>Email / Gmail</button>
+        <button class="nav-item" data-route="crm"><span>↗</span>CRM Integration</button>
+        <button class="nav-item" data-route="analytics"><span>▥</span>Analytics</button>
+        <button class="nav-item" data-route="settings"><span>⚙</span>Settings</button>
+      </nav>
+      <div class="sidebar-promo">
+        <span>BUILD</span><span>IDEAS</span><span>INTO</span><span>REALITY</span>
+        <small>Web Solutions<br>That Work.</small>
+      </div>
+      <div class="admin-profile">
+        <div class="avatar">CJ</div>
+        <div><strong>Cliff Jandee Medrano</strong><small>Admin <em></em> Online</small></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <button class="mobile-menu" id="mobileMenu" aria-label="Open navigation">☰</button>
+        <div class="mobile-brand"><div class="brand-mark mini"><span></span><i></i><b></b></div><strong>STEADFAST</strong></div>
+        <div class="top-actions">
+          <label class="search"><span>⌕</span><input id="globalSearch" type="search" placeholder="Search quotations, clients..."></label>
+          <button class="icon-btn notification-btn" id="notificationBtn" aria-label="Notifications">♧<b>3</b></button>
+          <button class="website-btn" id="viewWebsite">↗ <span>View Website</span></button>
+        </div>
+      </header>
+
+      <div class="page-wrap">
+        <section class="page dashboard-page active-page" data-page="dashboard">
+          <div class="welcome-row">
+            <div><p class="eyebrow">CODE &nbsp; CREATE &nbsp; CONNECT</p><h1>👋 Welcome back, Cliff!</h1><p>Here's what's happening with your website inquiries today.</p></div>
+            <div class="brand-mantra">BRANDS &nbsp;•&nbsp; PEOPLE &nbsp;•&nbsp; OPPORTUNITIES</div>
+          </div>
+          <div class="metrics" id="metrics"></div>
+          <div class="dashboard-grid">
+            <section class="card quotes-card span-2">
+              <div class="card-head"><div><h2>Recent Website Quotations</h2><p>Latest inquiries from potential clients.</p></div><button class="outline-btn" data-route="quotations">View All</button></div>
+              <div class="table-wrap"><table><thead><tr><th>#</th><th>Client Name</th><th>Website Type</th><th>Estimated Price</th><th>Currency</th><th>Status</th><th>Date</th><th>Actions</th></tr></thead><tbody id="quotesBody"></tbody></table></div>
+            </section>
+            <section class="card integrations-card"><div class="card-head"><div><h2>Integrations</h2></div><button class="outline-btn" data-route="crm">Manage</button></div><div id="integrations"></div></section>
+            <section class="card quick-card"><div class="card-head"><div><h2>Quick Actions</h2><p>Common tasks to save time.</p></div></div><div class="quick-grid"><button data-action="email">➤ <span>Compose Email</span></button><button data-route="leads">♙ <span>View New Leads</span></button><button data-action="csv">⇩ <span>Export to CSV</span></button><button data-route="email">▤ <span>Email Templates</span></button></div></section>
+            <section class="card analytics-card"><div class="card-head"><div><h2>Quotation Analytics</h2><p>Insights from your website inquiries.</p></div><select id="rangeSelect"><option>Last 30 Days</option><option>Last 90 Days</option><option>This Year</option></select></div><div class="analytics-kpis"><div><strong>28</strong><span>Total Inquiries</span></div><div><strong>$1,850</strong><span>Average Quote</span></div><div><strong>Business Website</strong><span>Most Requested</span></div><div><strong>62%</strong><span>Response Rate</span></div></div><div class="line-chart"><div class="grid-lines"></div><svg viewBox="0 0 640 170" preserveAspectRatio="none" aria-label="Inquiry trend"><polyline points="15,125 70,115 120,128 170,95 220,110 270,83 320,105 370,75 420,105 470,70 520,84 570,52 625,68" fill="none" stroke="url(#g)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="g" x1="0" x2="1"><stop stop-color="#6b5cff"/><stop offset="1" stop-color="#b94dff"/></linearGradient></defs></svg><div class="chart-labels"><span>Aug 20</span><span>Aug 27</span><span>Sep 3</span><span>Sep 10</span><span>Sep 17</span></div></div></section>
+            <section class="card types-card"><div class="card-head"><div><h2>Top Website Types</h2><p>Most requested website projects.</p></div></div><div class="donut-wrap"><div class="donut"><div><strong>28</strong><span>Total</span></div></div><ul><li><i></i>Business Website <b>36%</b></li><li><i></i>E-commerce <b>21%</b></li><li><i></i>Portfolio Website <b>14%</b></li><li><i></i>Restaurant Website <b>11%</b></li><li><i></i>Web Application <b>11%</b></li><li><i></i>Others <b>7%</b></li></ul></div></section>
+            <section class="card locations-card"><div class="card-head"><div><h2>Client Locations</h2><p>Visitors by country (auto-detected).</p></div><button class="outline-btn" data-action="map">View Map</button></div><div class="map-placeholder"><div class="map-grid"></div><span class="pin p1"></span><span class="pin p2"></span><span class="pin p3"></span><span class="pin p4"></span><span class="pin p5"></span><div class="country-list"><span>🇵🇭 Philippines <b>32%</b></span><span>🇺🇸 United States <b>24%</b></span><span>🇨🇦 Canada <b>12%</b></span><span>🇦🇺 Australia <b>10%</b></span><span>🇬🇧 United Kingdom <b>8%</b></span><span>🌐 Others <b>14%</b></span></div></div></section>
+          </div>
+        </section>
+
+        <section class="page" data-page="quotations"><div class="page-title"><div><p class="eyebrow">WEBSITE QUOTATION MANAGEMENT</p><h1>Quotations</h1><p>Review, update, and organize incoming website project inquiries.</p></div><button class="primary-btn" data-action="newQuote">＋ New Quote</button></div><div class="card full-card"><div class="toolbar"><input id="quoteFilter" placeholder="Search quotations..."/><select id="statusFilter"><option value="all">All Statuses</option><option>New</option><option>Contacted</option><option>Proposal Sent</option><option>In Progress</option></select></div><div class="table-wrap"><table><thead><tr><th>Client</th><th>Website</th><th>Estimate</th><th>Currency</th><th>Status</th><th>Date</th><th></th></tr></thead><tbody id="allQuotesBody"></tbody></table></div></div></section>
+        <section class="page" data-page="leads"><div class="page-title"><div><p class="eyebrow">LEAD PIPELINE</p><h1>Leads</h1><p>Track potential clients from first inquiry to conversion.</p></div></div><div class="pipeline" id="pipeline"></div></section>
+        <section class="page" data-page="clients"><div class="page-title"><div><p class="eyebrow">CLIENT DIRECTORY</p><h1>Clients</h1><p>Keep client details organized in one place.</p></div></div><div class="client-grid" id="clientGrid"></div></section>
+        <section class="page" data-page="email"><div class="page-title"><div><p class="eyebrow">COMMUNICATIONS</p><h1>Email / Gmail</h1><p>Prepare client messages and email templates.</p></div><button class="primary-btn" data-action="email">＋ Compose Email</button></div><div class="email-grid"><div class="card"><h2>Gmail Connection</h2><p>Connect Gmail through secure OAuth when the backend is ready. No Gmail password is stored in this front-end.</p><span class="status-pill connected">● Ready to connect</span></div><div class="card"><h2>Templates</h2><div class="template-list"><button data-action="template">Thank you for your inquiry</button><button data-action="template">Proposal ready</button><button data-action="template">Follow-up</button><button data-action="template">Project approved</button></div></div></div></section>
+        <section class="page" data-page="crm"><div class="page-title"><div><p class="eyebrow">LEAD AUTOMATION</p><h1>CRM Integration</h1><p>Connect a CRM and sync website inquiries automatically.</p></div></div><div class="integration-grid"><div class="card integration-large"><div class="integration-icon">◈</div><h2>CRM Connection</h2><p>Supports a future OAuth/API connection for CRM platforms such as HubSpot or Zoho.</p><button class="primary-btn" data-action="connectCRM">Connect CRM</button></div><div class="card"><h2>Sync Fields</h2><ul class="check-list"><li>Client name & contact details</li><li>Website type & project size</li><li>Estimated budget & currency</li><li>Requirements and selected features</li><li>Lead status and source</li></ul></div></div></section>
+        <section class="page" data-page="analytics"><div class="page-title"><div><p class="eyebrow">PERFORMANCE</p><h1>Analytics</h1><p>Understand quotation activity and project demand.</p></div></div><div class="analytics-page-grid"><div class="card big-number"><span>Total Inquiries</span><strong>28</strong><small>Last 30 days</small></div><div class="card big-number"><span>Average Quote</span><strong>$1,850</strong><small>Across submitted projects</small></div><div class="card big-number"><span>Response Rate</span><strong>62%</strong><small>Lead response activity</small></div><div class="card big-chart"><h2>Inquiry Trend</h2><div class="line-chart tall"><svg viewBox="0 0 800 250" preserveAspectRatio="none"><polyline points="10,195 80,180 150,195 220,145 290,165 360,125 430,150 500,100 570,135 640,82 710,50 790,72" fill="none" stroke="url(#g2)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/><defs><linearGradient id="g2"><stop stop-color="#6b5cff"/><stop offset="1" stop-color="#d95cff"/></linearGradient></defs></svg></div></div></div></section>
+        <section class="page" data-page="settings"><div class="page-title"><div><p class="eyebrow">SYSTEM</p><h1>Settings</h1><p>Configure the STEADFAST admin experience.</p></div></div><div class="settings-grid"><div class="card"><h2>Branding</h2><label>Brand name<input value="STEADFAST"/></label><label>Tagline<input value="WEB SOLUTIONS THAT WORK"/></label><label>Accent color<input type="color" value="#7c4dff"/></label><button class="primary-btn" data-action="saveSettings">Save Changes</button></div><div class="card"><h2>Notifications</h2><label class="toggle-row"><span>New quotation alerts</span><input type="checkbox" checked></label><label class="toggle-row"><span>Lead updates</span><input type="checkbox" checked></label><label class="toggle-row"><span>Email notifications</span><input type="checkbox"></label></div></div></section>
+      </div>
+
+      <footer class="footer"><div><strong>STEADFAST</strong><small>WEB SOLUTIONS THAT WORK</small></div><span>© 2026 STEADFAST. All rights reserved.</span><em>Build Today. A Brighter Tomorrow.</em></footer>
+    </main>
+  </div>
+  <div class="toast" id="toast" role="status"></div>
+  <div class="modal" id="modal"><div class="modal-backdrop"></div><div class="modal-card"><button class="modal-close" id="modalClose">×</button><div id="modalContent"></div></div></div>
+  <script src="admin.js"></script>
+</body>
+</html>

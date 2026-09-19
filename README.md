@@ -1,23 +1,16 @@
-# STEADFAST — by Cliff Jandee Medrano
+# STEADFAST Admin Dashboard
 
-Premium portfolio/service website focused on **Web Solutions**, with separate **Admin Support** and **Customer Service** service routes.
+Premium dark SaaS-style admin dashboard for STEADFAST — Web Solutions That Work.
 
-## Routes
-- `index.html` — Home, services, smart quote builder, contact
-- `about.html` — Cliff's profile, experience, tools, faith & purpose
-- `web-solutions.html` — primary web development/service page
-- `admin-support.html` — dedicated admin support service page
-- `customer-service.html` — dedicated customer service page
-- `project.html` — McKenzie Ramen House case study
-- `reviews.html` — reviews
-- `404.html` — not found page
+## Included
+- Dashboard matching the approved STEADFAST visual reference
+- Working JavaScript navigation for Dashboard, Quotations, Leads, Clients, Email/Gmail, CRM Integration, Analytics and Settings
+- Responsive mobile sidebar/navigation
+- Search and quotation filtering
+- Quotation detail modal and demo status progression
+- CSV export
+- Quick actions and toast notifications
+- Interactive UI components built without external dependencies
 
-## Smart Quote Builder
-- Detects visitor country/currency through IP geolocation (`ipapi.co`)
-- Converts the USD starting-price model using a public FX endpoint (`open.er-api.com`)
-- Formats estimates with the visitor's currency through `Intl.NumberFormat`
-- Includes a manual currency override
-- Falls back gracefully if geolocation or FX services are unavailable
-- Saves the latest quote in local browser storage
-
-No precise device location is requested or stored by the quote builder.
+## Backend note
+This build is the interactive front-end/admin UI. Real authentication, Firebase/Firestore persistence, Gmail OAuth and CRM API connections should be wired to the production backend before exposing the admin area publicly.
