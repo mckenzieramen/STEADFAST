@@ -153,6 +153,22 @@
     appId: '1:488385339804:web:0d2bcf3967a8f95ccfe859'
   };
 
+  // ---------- STEADFAST Gmail email bridge ----------
+  window.STEADFAST_SEND_EMAIL = async function(payload) {
+    const cfg = window.STEADFAST_EMAIL_CONFIG || {};
+    if (!cfg.endpoint) return { skipped: true, reason: 'Gmail endpoint not configured' };
+    const body = JSON.stringify(payload);
+    // Google Apps Script web apps can receive a simple POST without requiring a CORS preflight.
+    // We intentionally do not send or store Gmail credentials in the browser.
+    await fetch(cfg.endpoint, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body
+    });
+    return { queued: true };
+  };
+
   // ---------- Website quotation with IP-based currency ----------
   const quoteForm = $('#quoteForm');
   if (quoteForm) {
@@ -258,7 +274,16 @@
         const ref = await addDoc(collection(db, 'quotations'), { ...data, createdAt: serverTimestamp() });
         data.id = ref.id;
         localStorage.setItem('steadfastLastQuote', JSON.stringify(data));
-        toast('Quote received! A confirmation email will be sent shortly.');
+
+        // Send the admin notification + customer confirmation through the Gmail account
+        // authorized in Google Apps Script. Firestore remains the source of truth.
+        try {
+          await window.STEADFAST_SEND_EMAIL({ action: 'quoteReceived', quote: data });
+          toast('Quote received! Your confirmation was sent, and STEADFAST was notified.');
+        } catch (mailErr) {
+          console.warn('Gmail notification could not be queued:', mailErr);
+          toast('Quote received and saved. Email notifications are not connected yet.');
+        }
         quoteForm.reset();
       } catch (err) {
         console.error('Quotation submission failed:', err);

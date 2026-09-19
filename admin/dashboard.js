@@ -15,6 +15,8 @@ const firebaseConfig = {
 };
 
 const AUTHORIZED_EMAILS = ["yahhclffjnd@gmail.com"];
+const GMAIL_ENDPOINT = window.STEADFAST_EMAIL_CONFIG?.endpoint || '';
+const GMAIL_ADMIN = window.STEADFAST_EMAIL_CONFIG?.adminEmail || 'yahhclffjnd@gmail.com';
 const isAuthorized = (email) => AUTHORIZED_EMAILS.includes((email || "").toLowerCase().trim());
 
 const app = initializeApp(firebaseConfig);
@@ -101,11 +103,55 @@ function esc(value) {
 function quoteDate(ts) {
   try { return ts?.toDate ? ts.toDate().toLocaleString() : new Date(ts).toLocaleString(); } catch { return '—'; }
 }
+let quoteStore = new Map();
+
 function renderQuoteRows(rows, target) {
   if (!target) return;
-  if (!rows.length) { target.innerHTML = '<tr><td colspan="7" class="muted">No quotations yet.</td></tr>'; return; }
-  target.innerHTML = rows.map(q => `<tr><td>${esc(q.customerName)}</td><td>${esc(q.customerEmail)}</td><td>${esc(q.service)}</td><td>${esc(q.estimate)}</td><td>${esc(q.currency)}</td><td><span class="status-pill status-${String(q.status||'New').toLowerCase().replace(/[^a-z]+/g,'-')}">${esc(q.status||'New')}</span></td><td>${esc(quoteDate(q.createdAt))}</td></tr>`).join('');
+  rows.forEach(q => quoteStore.set(q.id, q));
+  if (!rows.length) { target.innerHTML = '<tr><td colspan="8" class="muted">No quotations yet.</td></tr>'; return; }
+  target.innerHTML = rows.map(q => `<tr><td>${esc(q.customerName)}</td><td>${esc(q.customerEmail)}</td><td>${esc(q.service)}</td><td>${esc(q.estimate)}</td><td>${esc(q.currency)}</td><td><span class="status-pill status-${String(q.status||'New').toLowerCase().replace(/[^a-z]+/g,'-')}">${esc(q.status||'New')}</span></td><td>${esc(quoteDate(q.createdAt))}</td><td><button class="table-email-btn" type="button" data-email-quote="${esc(q.id)}">Email</button></td></tr>`).join('');
+  target.querySelectorAll('[data-email-quote]').forEach(btn => btn.addEventListener('click', () => openEmailComposer(btn.dataset.emailQuote)));
 }
+
+function openEmailComposer(id) {
+  const q = quoteStore.get(id);
+  if (!q) return;
+  showSection('email');
+  const to = document.getElementById('emailTo');
+  const subject = document.getElementById('emailSubject');
+  const body = document.getElementById('emailBody');
+  if (to) to.value = q.customerEmail || '';
+  if (subject) subject.value = `Regarding your STEADFAST website quotation`;
+  if (body) body.value = `Hi ${q.customerName || 'there'},\n\nThank you for your website quotation request. I’ve reviewed the information you submitted and would be happy to discuss the next steps.\n\nWebsite: ${q.service || 'Website project'}\nEstimate: ${q.estimate || 'To be confirmed'}\n\nHUGE DISCOUNT AVAILABLE: Your project may qualify for UP TO 50% OFF, subject to final review and eligibility.\n\nPlease let me know if you would like to continue by email or schedule a meeting.\n\nThank you,\nCliff Jandee Medrano\nSTEADFAST` ;
+}
+
+function setGmailStatus() {
+  const el = document.getElementById('gmailStatus');
+  if (!el) return;
+  if (GMAIL_ENDPOINT) { el.textContent = 'GMAIL READY'; el.style.color = '#8ee6b2'; }
+  else { el.textContent = 'SETUP REQUIRED'; el.style.color = '#f7bd69'; }
+}
+
+async function sendAdminEmail() {
+  const to = document.getElementById('emailTo')?.value.trim();
+  const subject = document.getElementById('emailSubject')?.value.trim();
+  const body = document.getElementById('emailBody')?.value.trim();
+  if (!to || !/^\S+@\S+\.\S+$/.test(to)) { alert('Please enter a valid customer email address.'); return; }
+  if (!subject || !body) { alert('Please enter a subject and message.'); return; }
+  if (!GMAIL_ENDPOINT) { alert('Gmail is not connected yet. Add your Google Apps Script Web App URL to email-config.js first.'); return; }
+  const btn = document.getElementById('sendEmailBtn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  try {
+    await fetch(GMAIL_ENDPOINT, { method:'POST', mode:'no-cors', headers:{'Content-Type':'text/plain;charset=utf-8'}, body:JSON.stringify({ action:'sendEmail', to, subject, body, replyTo:GMAIL_ADMIN }) });
+    alert('Email sent to the Gmail bridge. Check Sent in Gmail to confirm delivery.');
+    if (btn) btn.textContent = 'Sent via Gmail';
+  } catch (err) {
+    console.error(err);
+    alert('The email could not be queued. Please check the Gmail bridge URL.');
+    if (btn) btn.textContent = 'Send via Gmail';
+  } finally { if (btn) btn.disabled = false; }
+}
+
 let unsubscribeQuotes;
 function startQuoteListener() {
   try {
@@ -127,4 +173,13 @@ function startQuoteListener() {
     });
   } catch (err) { console.error(err); }
 }
+document.getElementById('sendEmailBtn')?.addEventListener('click', sendAdminEmail);
+document.getElementById('clearEmailBtn')?.addEventListener('click', () => { ['emailTo','emailSubject','emailBody'].forEach(id => { const el=document.getElementById(id); if(el) el.value=''; }); });
+document.getElementById('useQuoteTemplate')?.addEventListener('click', () => {
+  const name = document.getElementById('emailTo')?.value ? '' : 'there';
+  const body = document.getElementById('emailBody');
+  if (body) body.value = `Hi ${name},\n\nThank you for your STEADFAST website quotation request. I’ve reviewed your requirements and would be happy to discuss the next steps.\n\nYour project may qualify for UP TO 50% OFF, subject to final review and eligibility.\n\nPlease let me know if you would like to continue by email or schedule a meeting.\n\nThank you,\nCliff Jandee Medrano\nSTEADFAST`;
+});
+setGmailStatus();
+
 startQuoteListener();
