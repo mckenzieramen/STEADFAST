@@ -4,7 +4,9 @@ import {
   GoogleAuthProvider,
   signInWithPopup,
   onAuthStateChanged,
-  signOut
+  signOut,
+  setPersistence,
+  browserLocalPersistence
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -16,7 +18,7 @@ const firebaseConfig = {
   appId: "1:488385339804:web:0d2bcf3967a8f95ccfe859"
 };
 
-const AUTHORIZED_EMAILS = ["yahhcliffjnd@gmail.com"];
+const AUTHORIZED_EMAILS = ["yahhclifjnd@gmail.com"];
 const message = document.getElementById("authMessage");
 const button = document.getElementById("googleSignIn");
 
@@ -37,6 +39,9 @@ function isAuthorized(email) {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+setPersistence(auth, browserLocalPersistence).catch((error) => {
+  console.warn("STEADFAST auth persistence could not be enabled:", error);
+});
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: "select_account" });
 

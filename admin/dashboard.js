@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { getFirestore, collection, onSnapshot, updateDoc, doc, arrayUnion, writeBatch } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -11,7 +11,7 @@ const firebaseConfig = {
   appId: "1:488385339804:web:0d2bcf3967a8f95ccfe859"
 };
 
-const AUTHORIZED_EMAILS = ["yahhcliffjnd@gmail.com"];
+const AUTHORIZED_EMAILS = ["yahhclifjnd@gmail.com"];
 const isAuthorized = (email) => AUTHORIZED_EMAILS.includes((email || "").toLowerCase().trim());
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -396,13 +396,48 @@ newTicketBtn?.addEventListener('click',()=>{showSection('quotations');});
 
 logout?.addEventListener('click',async()=>{logout.disabled=true;logout.textContent='Signing out…';try{await signOut(auth);}finally{window.location.replace('./index.html');}});
 
-onAuthStateChanged(auth,async(user)=>{
-  if(!user){window.location.replace('./index.html');return;}
+let authHandled = false;
+let authFallbackTimer = null;
+
+function finishAdminAuth(user){
+  if(authHandled) return;
+  authHandled = true;
+  if(authFallbackTimer) clearTimeout(authFallbackTimer);
+  if(!user){
+    window.location.replace('./index.html');
+    return;
+  }
   const email=(user.email||'').toLowerCase().trim();
-  if(!isAuthorized(email)){await signOut(auth);window.location.replace('./index.html');return;}
-  const displayName=user.displayName||'Cliff Jandee';if(adminName)adminName.textContent=displayName;if(adminEmail)adminEmail.textContent=email;
-  if(avatar){if(user.photoURL){avatar.src=user.photoURL;avatar.alt=displayName;avatar.classList.add('has-photo')}else{avatar.src='../assets/steadfast-mark.png';avatar.alt='STEADFAST';avatar.classList.remove('has-photo')}}
+  if(!isAuthorized(email)){
+    signOut(auth).finally(()=>window.location.replace('./index.html'));
+    return;
+  }
+  const displayName=user.displayName||'Cliff Jandee';
+  if(adminName)adminName.textContent=displayName;
+  if(adminEmail)adminEmail.textContent=email;
+  if(avatar){
+    if(user.photoURL){avatar.src=user.photoURL;avatar.alt=displayName;avatar.classList.add('has-photo')}
+    else{avatar.src='../assets/steadfast-mark.png';avatar.alt='STEADFAST';avatar.classList.remove('has-photo')}
+  }
   if(gmailStatus)gmailStatus.textContent=emailCfg.webAppUrl?'CONNECTED':'SETUP REQUIRED';
-  const dashboardGmailStatus=document.getElementById('dashboardGmailStatus');if(dashboardGmailStatus)dashboardGmailStatus.textContent=emailCfg.webAppUrl?'Connected':'Setup required';
-  if(stopQuotationListener)stopQuotationListener();stopQuotationListener=subscribeToQuotations();
-});
+  const dashboardGmailStatus=document.getElementById('dashboardGmailStatus');
+  if(dashboardGmailStatus)dashboardGmailStatus.textContent=emailCfg.webAppUrl?'Connected':'Setup required';
+  if(stopQuotationListener)stopQuotationListener();
+  stopQuotationListener=subscribeToQuotations();
+}
+
+async function initAdminAuth(){
+  try{
+    await setPersistence(auth,browserLocalPersistence).catch(()=>{});
+    const existingUser=auth.currentUser;
+    if(existingUser) finishAdminAuth(existingUser);
+    onAuthStateChanged(auth,(user)=>finishAdminAuth(user));
+    authFallbackTimer=setTimeout(()=>finishAdminAuth(auth.currentUser),5000);
+  }catch(error){
+    console.error('STEADFAST admin auth initialization failed:',error);
+    if(adminName)adminName.textContent='Authentication error';
+    if(adminEmail)adminEmail.textContent='Please reload the Admin Dashboard';
+  }
+}
+
+initAdminAuth();
