@@ -280,7 +280,12 @@
       if (submitBtn) { submitBtn.disabled = true; submitBtn.innerHTML = 'Sending request…'; }
 
       const estimateText = $('#estimate')?.textContent || '';
+      // IMPORTANT: the public quote form does NOT require the visitor to sign in.
+      // Email delivery and Firestore storage are separate operations so a Firebase
+      // session/rules problem cannot prevent the admin notification from being sent.
+      const quoteId = `STQ-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2,7).toUpperCase()}`;
       const data = {
+        quoteId,
         customerName, customerEmail, phone: $('#quotePhone')?.value.trim() || '', company: $('#quoteCompany')?.value.trim() || '',
         requirements: $('#quoteRequirements')?.value.trim() || '', preferredNextStep: $('#quoteNextStep')?.value || 'Email discussion',
         service: $('#service')?.value, scope: $('#size')?.selectedOptions?.[0]?.text || '', estimate: estimateText, currency, country: detectedCountry, fxRate: rate, rateSource,
@@ -288,17 +293,13 @@
       };
       localStorage.setItem('steadfastLastQuote', JSON.stringify(data));
 
-      try {
-        if (!window.STEADFAST_FIREBASE_CONFIG) throw new Error('Firebase config missing');
-        const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js');
-        const { getFirestore, collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
-        const app = getApps().length ? getApps()[0] : initializeApp(window.STEADFAST_FIREBASE_CONFIG);
-        const db = getFirestore(app);
-        const ref = await addDoc(collection(db, 'quotations'), { ...data, createdAt: serverTimestamp() });
-        data.id = ref.id;
-        localStorage.setItem('steadfastLastQuote', JSON.stringify(data));
+      let emailQueued = false;
+      let firestoreSaved = false;
 
-        const emailQueued = postToGmailBridge({
+      // 1) Send the customer confirmation + ADMIN notification without waiting
+      // for Firebase authentication. This is intentionally first.
+      try {
+        emailQueued = postToGmailBridge({
           action: 'sendQuoteEmail',
           customerName: data.customerName,
           customerEmail: data.customerEmail,
@@ -310,19 +311,45 @@
           requirements: data.requirements,
           nextStep: data.preferredNextStep,
           addons: data.addons.join('\n'),
-          quoteId: data.id
+          quoteId: data.quoteId
         });
+      } catch (emailErr) {
+        console.error('STEADFAST Gmail bridge submission failed:', emailErr);
+      }
 
-        toast(emailQueued ? 'Quote received! Confirmation sent by Gmail.' : 'Quote received! We will follow up shortly.');
+      // 2) Save the quotation separately for the Admin dashboard/ticketing system.
+      // A failure here must NOT undo the email notification.
+      try {
+        if (!window.STEADFAST_FIREBASE_CONFIG) throw new Error('Firebase config missing');
+        const { initializeApp, getApps } = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js');
+        const { getFirestore, collection, addDoc, serverTimestamp } = await import('https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js');
+        const app = getApps().length ? getApps()[0] : initializeApp(window.STEADFAST_FIREBASE_CONFIG);
+        const db = getFirestore(app);
+        const ref = await addDoc(collection(db, 'quotations'), { ...data, createdAt: serverTimestamp() });
+        data.id = ref.id;
+        firestoreSaved = true;
+        localStorage.setItem('steadfastLastQuote', JSON.stringify(data));
+      } catch (firestoreErr) {
+        console.error('Quotation Firestore save failed (email was attempted independently):', firestoreErr);
+      }
+
+      if (emailQueued && firestoreSaved) {
+        toast('Quote received! Confirmation sent and your request is now in our admin system.');
+      } else if (emailQueued) {
+        toast('Quote received! The notification was sent; the admin record is still being synchronized.');
+      } else if (firestoreSaved) {
+        toast('Quote received and saved. Email notification could not be started.');
+      } else {
+        toast('Your quote could not be fully submitted. Please try again in a moment.');
+      }
+
+      if (emailQueued || firestoreSaved) {
         quoteForm.reset();
         updateScope();
         calc();
-      } catch (err) {
-        console.error('Quotation submission failed:', err);
-        toast('We could not send your quote right now. Please try again in a moment.');
-      } finally {
-        if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = originalBtn; }
       }
+
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = originalBtn; }
     });
   }
 

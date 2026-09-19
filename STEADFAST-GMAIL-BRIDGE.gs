@@ -67,6 +67,7 @@ function authorizeAndTest() {
 }
 
 function sendQuoteEmail_(p) {
+  console.log('STEADFAST quote notification received for ' + String(p.customerEmail || ''));
   const customerEmail = String(p.customerEmail || '').trim();
   const customerName = String(p.customerName || 'there').trim();
   const websiteType = String(p.websiteType || 'Website').trim();
