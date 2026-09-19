@@ -144,40 +144,115 @@
     });
   });
 
-  // ---------- Quote builder ----------
+  // ---------- Smart quote builder with IP-based currency ----------
   const quoteForm = $('#quoteForm');
   if (quoteForm) {
-    const base = { 'Admin Support':150, 'Customer Service':175, 'Web Solutions':300, 'Admin + Customer Service':275, 'Full Support Package':450, 'Custom Quote':0 };
+    const base = { 'Admin Support':150, 'Customer Service':175, 'Web Solutions':300, 'Full Support Package':450, 'Custom Quote':0 };
+    const currencies = [
+      ['USD','United States'],['PHP','Philippines'],['CAD','Canada'],['AUD','Australia'],['NZD','New Zealand'],['GBP','United Kingdom'],['EUR','Eurozone'],['SGD','Singapore'],['HKD','Hong Kong'],['JPY','Japan'],['CNY','China'],['KRW','South Korea'],['INR','India'],['MYR','Malaysia'],['THB','Thailand'],['IDR','Indonesia'],['AED','United Arab Emirates'],['SAR','Saudi Arabia'],['CHF','Switzerland'],['BRL','Brazil'],['MXN','Mexico'],['ZAR','South Africa']
+    ];
+    const countryCurrency = {
+      US:'USD',CA:'CAD',AU:'AUD',NZ:'NZD',GB:'GBP',IE:'EUR',DE:'EUR',FR:'EUR',IT:'EUR',ES:'EUR',NL:'EUR',BE:'EUR',AT:'EUR',PT:'EUR',FI:'EUR',SE:'EUR',DK:'EUR',NO:'EUR',CH:'CHF',PH:'PHP',SG:'SGD',HK:'HKD',JP:'JPY',CN:'CNY',KR:'KRW',IN:'INR',MY:'MYR',TH:'THB',ID:'IDR',AE:'AED',SA:'SAR',BR:'BRL',MX:'MXN',ZA:'ZAR'
+    };
+    const symbols = {USD:'$',PHP:'₱',CAD:'CA$',AUD:'A$',NZD:'NZ$',GBP:'£',EUR:'€',SGD:'S$',HKD:'HK$',JPY:'¥',CNY:'CN¥',KRW:'₩',INR:'₹',MYR:'RM',THB:'฿',IDR:'Rp',AED:'AED ',SAR:'SAR ',CHF:'CHF ',BRL:'R$',MXN:'MX$',ZAR:'R'};
+    let currency = 'USD', rate = 1, detectedCountry = 'United States', rateSource = 'fallback';
+    const select = $('#currencySelect');
+    const status = $('#currencyStatus');
+    const label = $('#currencyLabel');
+    const fxNote = $('#fxNote');
+    if (select) select.innerHTML = currencies.map(([code,name]) => `<option value="${code}">${code} · ${name}</option>`).join('');
+
+    const formatMoney = usd => {
+      const amount = usd * rate;
+      try { return new Intl.NumberFormat(undefined,{style:'currency',currency,maximumFractionDigits: currency==='JPY'||currency==='KRW'?0:2}).format(amount); }
+      catch { return `${symbols[currency] || currency}${amount.toFixed(2)}`; }
+    };
+    const scopeSets = {
+      'Web Solutions': [['1','Landing page / small task'],['1.6','Business website'],['2.5','Web system / larger build']],
+      'Admin Support': [['1','One-time task'],['1.6','Weekly support'],['2.5','Ongoing operations']],
+      'Customer Service': [['1','Light support'],['1.6','Regular support'],['2.5','High-volume support']],
+      'Full Support Package': [['1','Starter package'],['1.6','Growth package'],['2.5','Full support setup']],
+      'Custom Quote': [['1','Tell me what you need'],['1','Custom project scope']]
+    };
+    const updateScope = () => {
+      const service = $('#service')?.value, size = $('#size');
+      if (!size) return;
+      const current = size.value;
+      size.innerHTML = (scopeSets[service] || scopeSets['Web Solutions']).map(([v,t]) => `<option value="${v}">${t}</option>`).join('');
+      size.value = [...size.options].some(o=>o.value===current) ? current : size.options[0]?.value || '1';
+      const labelEl = $('#scopeLabel');
+      if (labelEl) labelEl.firstChild.textContent = service === 'Web Solutions' ? 'Scope' : 'Support level';
+    };
     const calc = () => {
       const service = $('#service')?.value;
       const size = parseFloat($('#size')?.value || 1);
-      const estimate = $('#estimate');
-      const note = $('#estimateNote');
+      const estimate = $('#estimate'), note = $('#estimateNote');
       if (!estimate || !note) return;
       if (service === 'Custom Quote') {
         estimate.textContent = 'Custom';
         note.textContent = 'Tell me what you need and I’ll prepare a custom quote.';
-        return;
+      } else {
+        let value = (base[service] || 0) * size;
+        $$('.checks input:checked').forEach(x => value += Number(x.dataset.usd || x.value || 0));
+        estimate.textContent = formatMoney(value);
+        note.textContent = `Starting estimate · ${currency} · final pricing depends on scope.`;
       }
-      let value = (base[service] || 0) * size;
-      $$('.checks input:checked').forEach(x => value += Number(x.value || 0));
-      estimate.textContent = '$' + Math.round(value);
-      note.textContent = 'Starting estimate only — final pricing depends on scope and requirements.';
+      $$('.checks small[data-usd]').forEach(el => el.textContent = `+ ${formatMoney(Number(el.dataset.usd))}`);
+      if (label) label.textContent = `${currency} · ${detectedCountry}`;
     };
-    ['service','size'].forEach(id => $('#'+id)?.addEventListener('change', calc));
+    const setCurrency = async (code, country='') => {
+      currency = code || 'USD';
+      detectedCountry = country || detectedCountry || 'Local market';
+      if (select) select.value = currency;
+      rate = currency === 'USD' ? 1 : rate || 1;
+      if (status) status.innerHTML = `<span class="detect-dot"></span><span>${country ? `Detected ${country}` : `Currency set to ${currency}`}</span>`;
+      if (fxNote) fxNote.textContent = currency === 'USD' ? 'Base currency · USD' : 'Updating live FX rate…';
+      calc();
+      if (currency !== 'USD') {
+        try {
+          const r = await fetch('https://open.er-api.com/v6/latest/USD',{cache:'no-store'});
+          const data = await r.json();
+          if (data && data.rates && Number(data.rates[currency])) {
+            rate = Number(data.rates[currency]); rateSource = 'live';
+            if (fxNote) fxNote.textContent = `Live USD → ${currency} conversion`; calc();
+          } else throw new Error('Currency rate unavailable');
+        } catch {
+          // Keep the quote functional even if the public FX endpoint is unavailable.
+          rate = 1;
+          if (fxNote) fxNote.textContent = `${currency} selected · FX service unavailable`; calc();
+        }
+      }
+    };
+    if (select) select.addEventListener('change', () => setCurrency(select.value, detectedCountry));
+    $('#service')?.addEventListener('change', () => { updateScope(); calc(); });
+    $('#size')?.addEventListener('change', calc);
     $$('.checks input').forEach(x => x.addEventListener('change', calc));
+    updateScope();
     calc();
+
+    // Automatic IP-country detection. No precise location is requested or stored.
+    fetch('https://ipapi.co/json/',{cache:'no-store'}).then(r=>r.json()).then(data => {
+      const code = data?.country_code || 'US';
+      const detected = data?.currency || countryCurrency[code] || 'USD';
+      const name = data?.country_name || currencies.find(x=>x[0]===detected)?.[1] || 'Local market';
+      return setCurrency(detected,name);
+    }).catch(() => {
+      const browserCurrency = countryCurrency[(navigator.language||'en-US').split('-')[1]?.toUpperCase()] || 'USD';
+      return setCurrency(browserCurrency, currencies.find(x=>x[0]===browserCurrency)?.[1] || 'Local market');
+    });
+
     quoteForm.addEventListener('submit', e => {
       e.preventDefault();
       const data = {
         service: $('#service')?.value,
         scope: $('#size')?.selectedOptions?.[0]?.text || '',
         estimate: $('#estimate')?.textContent || '',
+        currency, country: detectedCountry, fxRate: rate, rateSource,
         addons: $$('.checks input:checked').map(x => x.parentElement.textContent.trim()),
         created: new Date().toISOString()
       };
       localStorage.setItem('steadfastLastQuote', JSON.stringify(data));
-      toast('Quote saved. Let’s turn it into an inquiry.');
+      toast(`Quote saved in ${currency}. Let’s turn it into an inquiry.`);
       setTimeout(() => smoothScroll('#contact'), 350);
     });
   }
@@ -291,6 +366,17 @@
       browser.style.transform=`perspective(1300px) rotateY(${px*-5}deg) rotateX(${py*3}deg) translateY(-4px)`;
     });
     visual?.addEventListener('pointerleave',()=>browser.style.transform='');
+  }
+
+  // ---------- Route page tabs ----------
+  const tabButtons = $$('[data-tab]');
+  const tabPanels = $$('[data-panel]');
+  if (tabButtons.length && tabPanels.length) {
+    tabButtons.forEach(btn => btn.addEventListener('click', () => {
+      const key = btn.dataset.tab;
+      tabButtons.forEach(b => b.classList.toggle('active', b === btn));
+      tabPanels.forEach(panel => panel.classList.toggle('active', panel.dataset.panel === key));
+    }));
   }
 
   // ---------- Image error guard ----------

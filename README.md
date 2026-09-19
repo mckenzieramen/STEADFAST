@@ -1,29 +1,23 @@
-# STEADFAST V12
+# STEADFAST — by Cliff Jandee Medrano
 
-V12 builds on V11 and keeps the existing design/features while changing the sticky site navigation to a clean white premium header.
+Premium portfolio/service website focused on **Web Solutions**, with separate **Admin Support** and **Customer Service** service routes.
 
-## Preserved
-- V11 interactive service flip cards
-- McKenzie Ramen House featured project
-- Laptop/project presentation
-- Dedicated project case-study page
-- Real customer website/admin links
-- Existing responsive behavior and project screenshots
+## Routes
+- `index.html` — Home, services, smart quote builder, contact
+- `about.html` — Cliff's profile, experience, tools, faith & purpose
+- `web-solutions.html` — primary web development/service page
+- `admin-support.html` — dedicated admin support service page
+- `customer-service.html` — dedicated customer service page
+- `project.html` — McKenzie Ramen House case study
+- `reviews.html` — reviews
+- `404.html` — not found page
 
-## V12 change
-- Clean white sticky navigation header
-- Dark readable navigation text
-- Purple active/hover accent
-- Purple CTA retained
-- Mobile navigation updated for the white header
+## Smart Quote Builder
+- Detects visitor country/currency through IP geolocation (`ipapi.co`)
+- Converts the USD starting-price model using a public FX endpoint (`open.er-api.com`)
+- Formats estimates with the visitor's currency through `Intl.NumberFormat`
+- Includes a manual currency override
+- Falls back gracefully if geolocation or FX services are unavailable
+- Saves the latest quote in local browser storage
 
-
-## V14 update
-V12 visual baseline preserved. Added expanded Tools & Platforms section with business/admin, customer support, web development, and deployment/digital tools. White premium header retained.
-
-
-JS INTERACTION UPDATE
-- Global smooth navigation, active nav, scroll progress, reveal animations, back-to-top, button ripple.
-- Interactive quote/contact forms and review system retained.
-- Project screenshot lightbox: animated open/close, zoom, pan, keyboard navigation, previous/next.
-- Reduced-motion accessibility support included.
+No precise device location is requested or stored by the quote builder.
