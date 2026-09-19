@@ -1,3 +1,23 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  serverTimestamp
+} from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+
+const STEADFAST_FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD13MXR0ZQSjPJBxQKYPmsMKjl4yzU2hSs",
+  authDomain: "steadfast-1d0e6.firebaseapp.com",
+  projectId: "steadfast-1d0e6",
+  storageBucket: "steadfast-1d0e6.firebasestorage.app",
+  messagingSenderId: "488385339804",
+  appId: "1:488385339804:web:0d2bcf3967a8f95ccfe859"
+};
+
+const steadfastApp = initializeApp(STEADFAST_FIREBASE_CONFIG);
+const steadfastDb = getFirestore(steadfastApp);
+
 (() => {
   'use strict';
   const $ = (s, r=document) => r.querySelector(s);
@@ -226,13 +246,108 @@
       return setCurrency(browserCurrency, currencies.find(x=>x[0]===browserCurrency)?.[1] || 'Local market');
     });
 
-    quoteForm.addEventListener('submit', e => {
+    quoteForm.addEventListener('submit', async e => {
       e.preventDefault();
-      if (!base[$('#service')?.value]) { toast('Choose a website type first.'); return; }
-      const data = { service: $('#service')?.value, scope: $('#size')?.selectedOptions?.[0]?.text || '', estimate: $('#estimate')?.textContent || '', currency, country: detectedCountry, fxRate: rate, rateSource, addons: $$('.checks input:checked').map(x => x.parentElement.textContent.trim()), created: new Date().toISOString() };
-      localStorage.setItem('steadfastLastQuote', JSON.stringify(data));
-      toast(`Website quote saved in ${currency}. Let’s turn it into an inquiry.`);
-      setTimeout(() => smoothScroll('#contact'), 350);
+
+      if (!base[$('#service')?.value]) {
+        toast('Choose a website type first.');
+        return;
+      }
+
+      const name = ($('#quoteName')?.value || '').trim();
+      const email = ($('#quoteEmail')?.value || '').trim().toLowerCase();
+      const phone = ($('#quotePhone')?.value || '').trim();
+      const company = ($('#quoteCompany')?.value || '').trim();
+      const requirements = ($('#quoteRequirements')?.value || '').trim();
+      const nextStep = $('#quoteNextStep')?.value || 'Email conversation';
+      const submitBtn = $('#quoteSubmitBtn');
+
+      if (!name || !email) {
+        toast('Please enter your name and email.');
+        return;
+      }
+
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+        toast('Please enter a valid email address.');
+        return;
+      }
+
+      const addons = $$('.checks input:checked').map(x => {
+        const label = x.parentElement;
+        return (label?.textContent || '').replace(/\+\s*[^0-9A-Za-z₱$€£¥.,\s-]+.*$/,'').trim() || label?.textContent?.trim() || '';
+      }).filter(Boolean);
+
+      const quoteData = {
+        customerName: name,
+        customerEmail: email,
+        phone,
+        company,
+        requirements,
+        preferredNextStep: nextStep,
+        service: $('#service')?.value || '',
+        scope: $('#size')?.selectedOptions?.[0]?.text || '',
+        estimate: $('#estimate')?.textContent || '',
+        currency,
+        country: detectedCountry,
+        fxRate: Number(rate) || 1,
+        rateSource,
+        addons,
+        status: 'New',
+        source: 'steadfast-website',
+        createdAt: serverTimestamp()
+      };
+
+      const originalText = submitBtn?.textContent || 'Send Website Quote Request';
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Sending quote…';
+      }
+
+      try {
+        const ref = await addDoc(collection(steadfastDb, 'quotations'), quoteData);
+
+        const localCopy = {
+          ...quoteData,
+          createdAt: new Date().toISOString(),
+          id: ref.id
+        };
+        localStorage.setItem('steadfastLastQuote', JSON.stringify(localCopy));
+
+        let status = $('#quoteSubmitStatus');
+        if (!status) {
+          status = document.createElement('p');
+          status.id = 'quoteSubmitStatus';
+          status.className = 'quote-submit-status';
+          quoteForm.appendChild(status);
+        }
+        status.className = 'quote-submit-status success';
+        status.textContent = 'Quote request received. Your details have been sent to STEADFAST for review.';
+
+        toast('Quote request sent successfully.');
+        quoteForm.reset();
+        if (select) select.value = currency;
+        updateScope();
+        calc();
+
+      } catch (error) {
+        console.error('STEADFAST quotation submission failed:', error);
+
+        let status = $('#quoteSubmitStatus');
+        if (!status) {
+          status = document.createElement('p');
+          status.id = 'quoteSubmitStatus';
+          status.className = 'quote-submit-status';
+          quoteForm.appendChild(status);
+        }
+        status.className = 'quote-submit-status error';
+        status.textContent = 'We could not send your quote right now. Please try again in a moment.';
+        toast('Quote could not be sent. Please try again.');
+      } finally {
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = `${originalText} <span>→</span>`;
+        }
+      }
     });
   }
 

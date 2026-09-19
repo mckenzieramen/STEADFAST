@@ -55,11 +55,11 @@
         </div>
 
         <div class="metrics">
-          <article><span>New Quotes</span><strong>12</strong><small>Needs review</small></article>
-          <article><span>Pending</span><strong>7</strong><small>Awaiting response</small></article>
-          <article><span>Contacted</span><strong>3</strong><small>Conversation started</small></article>
-          <article><span>In Progress</span><strong>2</strong><small>Active projects</small></article>
-          <article><span>Converted</span><strong>5</strong><small>Approved projects</small></article>
+          <article><span>New Quotes</span><strong id="metricNewQuotes">0</strong><small>Needs review</small></article>
+          <article><span>Pending</span><strong id="metricPending">0</strong><small>Awaiting response</small></article>
+          <article><span>Contacted</span><strong id="metricContacted">0</strong><small>Conversation started</small></article>
+          <article><span>In Progress</span><strong id="metricInProgress">0</strong><small>Active projects</small></article>
+          <article><span>Converted</span><strong id="metricConverted">0</strong><small>Approved projects</small></article>
         </div>
 
         <div class="grid two">
@@ -68,10 +68,8 @@
             <div class="table-wrap">
               <table>
                 <thead><tr><th>Client</th><th>Website</th><th>Budget</th><th>Status</th><th>Date</th></tr></thead>
-                <tbody>
-                  <tr><td>Sample Client</td><td>Business Website</td><td>PHP 35,000</td><td><span class="pill pending">Pending</span></td><td>Today</td></tr>
-                  <tr><td>Sample Restaurant</td><td>Restaurant Website</td><td>PHP 28,000</td><td><span class="pill contacted">Contacted</span></td><td>Yesterday</td></tr>
-                  <tr><td>Sample Brand</td><td>E-commerce</td><td>PHP 65,000</td><td><span class="pill progress">In Progress</span></td><td>Sep 17</td></tr>
+                <tbody id="recentQuotesBody">
+                  <tr><td colspan="5">Loading quotations…</td></tr>
                 </tbody>
               </table>
             </div>
@@ -86,7 +84,24 @@
         </div>
       </section>
 
-      <section id="quotations" class="section"><div class="empty-panel"><h2>Website Quotations</h2><p>Client quotation records will appear here when Firestore is connected.</p></div></section>
+      <section id="quotations" class="section">
+  <div class="panel">
+    <div class="panel-head">
+      <div><h3>Website Quotations</h3><p>Live quotation submissions from the STEADFAST website.</p></div>
+      <button class="text-btn" id="refreshQuotesBtn" type="button">Refresh</button>
+    </div>
+    <div class="table-wrap">
+      <table class="quotes-table">
+        <thead><tr><th>Client</th><th>Website</th><th>Estimate</th><th>Status</th><th>Date</th></tr></thead>
+        <tbody id="quotesBody"><tr><td colspan="5">Loading quotations…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+  <div class="panel quote-detail-panel" id="quoteDetailPanel" hidden>
+    <div class="panel-head"><div><h3 id="quoteDetailTitle">Quotation details</h3><p id="quoteDetailSubtitle"></p></div><button class="text-btn" id="closeQuoteDetail" type="button">Close</button></div>
+    <div id="quoteDetailContent"></div>
+  </div>
+</section>
       <section id="leads" class="section"><div class="empty-panel"><h2>Leads</h2><p>Track new leads, contacted leads, proposal stages, and conversions.</p></div></section>
       <section id="clients" class="section"><div class="empty-panel"><h2>Clients</h2><p>Manage approved and active website clients.</p></div></section>
       <section id="email" class="section"><div class="empty-panel"><h2>Email / Gmail</h2><p>Gmail OAuth and sending templates can be connected here. Never store a Gmail password in the website.</p></div></section>
