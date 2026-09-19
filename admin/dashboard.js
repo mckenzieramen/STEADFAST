@@ -349,10 +349,10 @@ composerTabs.forEach(tab=>tab.addEventListener('click',()=>{
   composerTabs.forEach(t=>t.classList.toggle('active',t===tab));const noteMode=tab.dataset.composeMode==='note';replyComposer.hidden=noteMode;noteComposer.hidden=!noteMode;ticketStatusMessage.textContent='';
 }));
 
-function setAdminLoading(text, done=false){const loader=document.getElementById('adminLoading');const label=document.getElementById('adminLoadingText');if(label&&text)label.textContent=text;if(done&&loader)loader.classList.add('hidden');}
+function setAdminLoading(text, done=false){const loader=document.getElementById('adminLoading');if(loader){loader.classList.add('hidden');loader.style.display='none';loader.setAttribute('aria-hidden','true');} }
 
 function subscribeToQuotations(){
-  setAdminLoading('Loading quotations and support tickets…');
+  setAdminLoading('');
   return onSnapshot(collection(db,'quotations'),snapshot=>{
     const items=snapshot.docs.map(s=>({id:s.id,...s.data()}));
     quotationMap=new Map(items.map(q=>[q.id,q]));
@@ -363,8 +363,8 @@ function subscribeToQuotations(){
       if(first)openTicket(first.id);
     }
     ensureTicketNumbers(items);
-    setAdminLoading('Admin Dashboard ready.', true);
-  },error=>{console.error('Quotation listener failed:',error);if(quotationRows)quotationRows.innerHTML='<tr><td colspan="7">Could not load quotations. Check Firestore Rules.</td></tr>';if(ticketList)ticketList.innerHTML='<div class="list-empty"><strong>Could not load tickets</strong><span>Check Firestore Rules.</span></div>';setAdminLoading('Dashboard loaded, but ticket data could not be read.', true);});
+    setAdminLoading('', true);
+  },error=>{console.error('Quotation listener failed:',error);if(quotationRows)quotationRows.innerHTML='<tr><td colspan="7">Could not load quotations. Check Firestore Rules.</td></tr>';if(ticketList)ticketList.innerHTML='<div class="list-empty"><strong>Could not load tickets</strong><span>Check Firestore Rules.</span></div>';setAdminLoading('', true);});
 }
 
 function sendGmail(to,subject,body,statusEl,button){
@@ -408,13 +408,13 @@ function finishAdminAuth(user){
   if(user) authHandled = true;
   if(authFallbackTimer) clearTimeout(authFallbackTimer);
   if(!user){
-    setAdminLoading('Redirecting to Admin Login…', true);
+    setAdminLoading('', true);
     window.location.replace('./index.html');
     return;
   }
   const email=(user.email||'').toLowerCase().trim();
   if(!isAuthorized(email)){
-    setAdminLoading('Checking administrator access…');
+    setAdminLoading('', true);
     signOut(auth).finally(()=>window.location.replace('./index.html'));
     return;
   }
@@ -427,7 +427,7 @@ function finishAdminAuth(user){
   }
   // Authentication is complete. Never keep the full-screen loader over the
   // workspace while Firestore is connecting; the navigation must remain usable.
-  setAdminLoading('Admin session verified.', true);
+  setAdminLoading('', true);
   if(gmailStatus)gmailStatus.textContent=emailCfg.webAppUrl?'CONNECTED':'SETUP REQUIRED';
   const dashboardGmailStatus=document.getElementById('dashboardGmailStatus');
   if(dashboardGmailStatus)dashboardGmailStatus.textContent=emailCfg.webAppUrl?'Connected':'Setup required';
@@ -437,7 +437,7 @@ function finishAdminAuth(user){
 
 function initAdminAuth(){
   try{
-    setAdminLoading('Checking your admin session…');
+    setAdminLoading('');
 
     // Start the observer first. Waiting on setPersistence before registering the
     // observer can leave the header stuck on “Authenticating…” on slower browsers.
@@ -446,7 +446,7 @@ function initAdminAuth(){
         finishAdminAuth(user);
       }else{
         // Firebase has finished restoring the session and there is no admin user.
-        setAdminLoading('No active admin session. Redirecting to login…', true);
+        setAdminLoading('', true);
         setTimeout(()=>window.location.replace('./index.html'),350);
       }
     });
@@ -464,7 +464,7 @@ function initAdminAuth(){
         if(current){
           finishAdminAuth(current);
         }else{
-          setAdminLoading('Authentication is taking longer than expected…', true);
+          setAdminLoading('', true);
           if(adminName)adminName.textContent='STEADFAST Admin';
           if(adminEmail)adminEmail.textContent='Session check pending';
         }
@@ -474,7 +474,7 @@ function initAdminAuth(){
     console.error('STEADFAST admin auth initialization failed:',error);
     if(adminName)adminName.textContent='Authentication error';
     if(adminEmail)adminEmail.textContent='Session check failed';
-    setAdminLoading('Authentication could not be completed. You can still use the menu while the session reconnects.', true);
+    setAdminLoading('', true);
   }
 }
 

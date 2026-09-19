@@ -72,13 +72,7 @@
   </script>
 </head>
 <body>
-  <div id="adminLoading" class="admin-loading" aria-live="polite">
-    <div class="loading-card">
-      <div class="loading-spinner" aria-hidden="true"></div>
-      <strong>Loading Admin Dashboard</strong>
-      <span id="adminLoadingText">Checking your admin session…</span>
-    </div>
-  </div>
+  <div id="adminLoading" class="admin-loading hidden" aria-hidden="true" style="display:none!important"></div>
   <div class="app">
     <aside class="sidebar" id="sidebar">
       <a class="side-brand" href="../index.html" aria-label="STEADFAST Home">
@@ -208,14 +202,40 @@
       <section id="settings" class="section"><div class="empty-panel"><h2>Settings</h2><p>Manage administrator access and integration configuration.</p></div></section>
     </main>
   </div>
-  <script src="../email-config.js"></script><script type="module" src="./dashboard.js?v=17"></script>
+  <script src="../email-config.js"></script><script type="module" src="./dashboard.js?v=19"></script>
 
 <script>
 (function(){
-  // Keep navigation usable even if the Firebase module is slow or temporarily unavailable.
-  window.addEventListener("load",function(){
-    if(window.goAdminSection) window.goAdminSection("dashboard");
-  });
+  // V19: the dashboard UI must never wait for Firebase to render or navigate.
+  // Authentication/data loading runs independently in dashboard.js.
+  var loader=document.getElementById('adminLoading');
+  if(loader){ loader.classList.add('hidden'); loader.style.display='none'; }
+
+  function activate(id){
+    var target=document.getElementById(id);
+    if(!target) return false;
+    document.querySelectorAll('.section').forEach(function(s){s.classList.toggle('active',s.id===id);});
+    document.querySelectorAll('.nav-item[data-section]').forEach(function(item){
+      item.classList.toggle('active',item.getAttribute('data-section')===id);
+    });
+    var active=document.querySelector('.nav-item[data-section="'+id+'"]');
+    var title=document.getElementById('pageTitle');
+    if(title && active){ title.textContent=(active.querySelector('span:not(.nav-icon):not(.nav-count)')||active).textContent.trim(); }
+    var sidebar=document.getElementById('sidebar');
+    if(sidebar) sidebar.classList.remove('open');
+    if(id!=='support') window.scrollTo(0,0);
+    return false;
+  }
+  window.goAdminSection=activate;
+  document.addEventListener('click',function(e){
+    var nav=e.target.closest && e.target.closest('.nav-item[data-section]');
+    if(nav){ e.preventDefault(); e.stopImmediatePropagation(); activate(nav.getAttribute('data-section')); return; }
+    var link=e.target.closest && e.target.closest('[data-section-link]');
+    if(link){ e.preventDefault(); e.stopImmediatePropagation(); activate(link.getAttribute('data-section-link')); return; }
+  },true);
+  document.addEventListener('DOMContentLoaded',function(){ activate('dashboard'); });
+  // Run now too because this script is at the end of body.
+  activate('dashboard');
 })();
 </script>
 </body>
