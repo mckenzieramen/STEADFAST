@@ -349,7 +349,10 @@ composerTabs.forEach(tab=>tab.addEventListener('click',()=>{
   composerTabs.forEach(t=>t.classList.toggle('active',t===tab));const noteMode=tab.dataset.composeMode==='note';replyComposer.hidden=noteMode;noteComposer.hidden=!noteMode;ticketStatusMessage.textContent='';
 }));
 
+function setAdminLoading(text, done=false){const loader=document.getElementById('adminLoading');const label=document.getElementById('adminLoadingText');if(label&&text)label.textContent=text;if(done&&loader)loader.classList.add('hidden');}
+
 function subscribeToQuotations(){
+  setAdminLoading('Loading quotations and support tickets…');
   return onSnapshot(collection(db,'quotations'),snapshot=>{
     const items=snapshot.docs.map(s=>({id:s.id,...s.data()}));
     quotationMap=new Map(items.map(q=>[q.id,q]));
@@ -360,7 +363,8 @@ function subscribeToQuotations(){
       if(first)openTicket(first.id);
     }
     ensureTicketNumbers(items);
-  },error=>{console.error('Quotation listener failed:',error);if(quotationRows)quotationRows.innerHTML='<tr><td colspan="7">Could not load quotations. Check Firestore Rules.</td></tr>';if(ticketList)ticketList.innerHTML='<div class="list-empty"><strong>Could not load tickets</strong><span>Check Firestore Rules.</span></div>';});
+    setAdminLoading('Admin Dashboard ready.', true);
+  },error=>{console.error('Quotation listener failed:',error);if(quotationRows)quotationRows.innerHTML='<tr><td colspan="7">Could not load quotations. Check Firestore Rules.</td></tr>';if(ticketList)ticketList.innerHTML='<div class="list-empty"><strong>Could not load tickets</strong><span>Check Firestore Rules.</span></div>';setAdminLoading('Dashboard loaded, but ticket data could not be read.', true);});
 }
 
 function sendGmail(to,subject,body,statusEl,button){
@@ -404,11 +408,13 @@ function finishAdminAuth(user){
   authHandled = true;
   if(authFallbackTimer) clearTimeout(authFallbackTimer);
   if(!user){
+    setAdminLoading('Redirecting to Admin Login…', true);
     window.location.replace('./index.html');
     return;
   }
   const email=(user.email||'').toLowerCase().trim();
   if(!isAuthorized(email)){
+    setAdminLoading('Checking administrator access…');
     signOut(auth).finally(()=>window.location.replace('./index.html'));
     return;
   }
@@ -419,6 +425,7 @@ function finishAdminAuth(user){
     if(user.photoURL){avatar.src=user.photoURL;avatar.alt=displayName;avatar.classList.add('has-photo')}
     else{avatar.src='../assets/steadfast-mark.png';avatar.alt='STEADFAST';avatar.classList.remove('has-photo')}
   }
+  setAdminLoading('Connecting to your dashboard data…');
   if(gmailStatus)gmailStatus.textContent=emailCfg.webAppUrl?'CONNECTED':'SETUP REQUIRED';
   const dashboardGmailStatus=document.getElementById('dashboardGmailStatus');
   if(dashboardGmailStatus)dashboardGmailStatus.textContent=emailCfg.webAppUrl?'Connected':'Setup required';
@@ -437,6 +444,7 @@ async function initAdminAuth(){
     console.error('STEADFAST admin auth initialization failed:',error);
     if(adminName)adminName.textContent='Authentication error';
     if(adminEmail)adminEmail.textContent='Please reload the Admin Dashboard';
+    setAdminLoading('Authentication could not be completed. Please reload.', true);
   }
 }
 
