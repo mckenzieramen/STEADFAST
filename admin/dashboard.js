@@ -11,7 +11,7 @@ const firebaseConfig = {
   appId: "1:488385339804:web:0d2bcf3967a8f95ccfe859"
 };
 
-const AUTHORIZED_EMAILS = ["yahhclffjnd@gmail.com"];
+const AUTHORIZED_EMAILS = ["yahhcliffjnd@gmail.com"];
 const isAuthorized = (email) => AUTHORIZED_EMAILS.includes((email || "").toLowerCase().trim());
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
