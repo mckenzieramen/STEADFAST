@@ -425,7 +425,9 @@ function finishAdminAuth(user){
     if(user.photoURL){avatar.src=user.photoURL;avatar.alt=displayName;avatar.classList.add('has-photo')}
     else{avatar.src='../assets/steadfast-mark.png';avatar.alt='STEADFAST';avatar.classList.remove('has-photo')}
   }
-  setAdminLoading('Connecting to your dashboard data…');
+  // Authentication is complete. Never keep the full-screen loader over the
+  // workspace while Firestore is connecting; the navigation must remain usable.
+  setAdminLoading('Admin session verified.', true);
   if(gmailStatus)gmailStatus.textContent=emailCfg.webAppUrl?'CONNECTED':'SETUP REQUIRED';
   const dashboardGmailStatus=document.getElementById('dashboardGmailStatus');
   if(dashboardGmailStatus)dashboardGmailStatus.textContent=emailCfg.webAppUrl?'Connected':'Setup required';

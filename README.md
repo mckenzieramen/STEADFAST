@@ -33,3 +33,6 @@ Before deployment, replace the Firebase placeholders in `admin/auth.js` and `adm
 
 ## Gmail quotation automation
 The quotation workflow uses the STEADFAST Gmail Bridge Apps Script. The customer receives an automatic quotation summary and a promotional UP TO 75% OFF offer after a successful quotation submission, while the admin receives a notification at yahhclffjnd@gmail.com. The Apps Script owner must authorize Gmail once by running authorizeAndTest().
+
+
+V18 targeted fix: authentication overlay no longer blocks the admin workspace after a valid session is confirmed; sidebar navigation remains usable while Firestore loads or fails. Public website design and unrelated sections are preserved.

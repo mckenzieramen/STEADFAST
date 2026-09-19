@@ -29,3 +29,10 @@ body{min-height:100vh;overflow-x:hidden}.app{display:flex;min-height:100vh}.side
 /* V17 ticket loading skeleton */
 .ticket-loading-list{padding:3px 2px}.ticket-skeleton{height:67px;margin-bottom:6px;border:1px solid rgba(255,255,255,.045);border-radius:13px;background:linear-gradient(100deg,rgba(255,255,255,.018) 25%,rgba(167,139,250,.07) 37%,rgba(255,255,255,.018) 63%);background-size:400% 100%;animation:ticketSkeleton 1.2s ease-in-out infinite;position:relative;padding:13px 12px 13px 59px}.ticket-skeleton i{position:absolute;left:11px;top:13px;width:39px;height:39px;border-radius:50%;background:rgba(255,255,255,.05)}.ticket-skeleton span{display:block;width:48%;height:8px;border-radius:99px;background:rgba(255,255,255,.07);margin:2px 0 9px}.ticket-skeleton b{display:block;width:72%;height:7px;border-radius:99px;background:rgba(255,255,255,.045)}@keyframes ticketSkeleton{0%{background-position:100% 0}100%{background-position:0 0}}
 @media(max-width:520px){.message-block{max-width:90%;width:90%}.message-row.note .message-block{max-width:94%;width:94%}}
+
+/* V18 navigation/auth fix: authenticated workspace must never be click-blocked. */
+.admin-loading.authenticated-overlay{
+  opacity:0!important;
+  visibility:hidden!important;
+  pointer-events:none!important;
+}

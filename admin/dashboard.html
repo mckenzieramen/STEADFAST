@@ -8,25 +8,66 @@
   <link rel="stylesheet" href="./dashboard.css">
   <script>
   (function(){
-    window.goAdminSection=function(id){
+    function activate(id){
       var target=document.getElementById(id);
       if(!target)return false;
-      document.querySelectorAll(".section").forEach(function(section){section.classList.toggle("active",section.id===id);});
-      document.querySelectorAll(".nav-item").forEach(function(item){item.classList.toggle("active",item.getAttribute("data-section")===id);});
+      document.querySelectorAll(".section").forEach(function(section){
+        section.classList.toggle("active", section.id===id);
+      });
+      document.querySelectorAll(".nav-item[data-section]").forEach(function(item){
+        item.classList.toggle("active", item.getAttribute("data-section")===id);
+      });
       var active=document.querySelector('.nav-item[data-section="'+id+'"]');
       var title=document.getElementById("pageTitle");
-      if(title)title.textContent=active?active.querySelector("span:last-child")?.textContent.trim():"Dashboard";
+      if(title){
+        var label=active && active.querySelector("span:last-child");
+        title.textContent=label ? label.textContent.trim() : "Dashboard";
+      }
       var sidebar=document.getElementById("sidebar");
       if(sidebar)sidebar.classList.remove("open");
-      if(id!=="support")window.scrollTo(0,0);
+      if(id==="support"){
+        setTimeout(function(){
+          var list=document.getElementById("ticketList");
+          var conversation=document.getElementById("conversationScroll");
+          if(list && list.scrollTop<0)list.scrollTop=0;
+          if(conversation && conversation.scrollTop<0)conversation.scrollTop=0;
+        },0);
+      }else{
+        window.scrollTo(0,0);
+      }
       return false;
-    };
+    }
+    window.goAdminSection=activate;
+
+    // Capture navigation before any other handler can interfere.
     document.addEventListener("click",function(e){
       var item=e.target.closest && e.target.closest(".nav-item[data-section]");
-      if(item){e.preventDefault();window.goAdminSection(item.getAttribute("data-section"));return;}
+      if(item){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        activate(item.getAttribute("data-section"));
+        return;
+      }
       var link=e.target.closest && e.target.closest("[data-section-link]");
-      if(link){e.preventDefault();window.goAdminSection(link.getAttribute("data-section-link"));}
+      if(link){
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        activate(link.getAttribute("data-section-link"));
+      }
     },true);
+
+    // The inline onclick handlers on the sidebar are the final fallback for
+    // environments where module JavaScript fails to load.
+    document.addEventListener("DOMContentLoaded",function(){
+      document.querySelectorAll(".nav-item[data-section]").forEach(function(item){
+        item.addEventListener("keydown",function(e){
+          if(e.key==="Enter" || e.key===" "){
+            e.preventDefault();
+            activate(item.getAttribute("data-section"));
+          }
+        });
+      });
+    });
   })();
   </script>
 </head>
