@@ -1,228 +1,62 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-import { getFirestore, collection, onSnapshot, updateDoc, doc } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, updateDoc, doc, arrayUnion } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyD13MXR0ZQSjPJBxQKYPmsMKjl4yzU2hSs",
-  authDomain: "steadfast-1d0e6.firebaseapp.com",
-  projectId: "steadfast-1d0e6",
-  storageBucket: "steadfast-1d0e6.firebasestorage.app",
-  messagingSenderId: "488385339804",
-  appId: "1:488385339804:web:0d2bcf3967a8f95ccfe859"
-};
+const firebaseConfig={apiKey:"AIzaSyD13MXR0ZQSjPJBxQKYPmsMKjl4yzU2hSs",authDomain:"steadfast-1d0e6.firebaseapp.com",projectId:"steadfast-1d0e6",storageBucket:"steadfast-1d0e6.firebasestorage.app",messagingSenderId:"488385339804",appId:"1:488385339804:web:0d2bcf3967a8f95ccfe859"};
+const AUTHORIZED_EMAILS=["yahhclffjnd@gmail.com"];
+const app=initializeApp(firebaseConfig),auth=getAuth(app),db=getFirestore(app),emailCfg=window.STEADFAST_EMAIL_CONFIG||{};
+const $=id=>document.getElementById(id);
+const adminEmail=$("adminEmail"),adminName=$("adminName"),avatar=$("adminAvatar"),logoutBtn=$("logoutBtn"),quotationRows=$("quotationRows"),recentRows=$("recentQuotationRows"),quoteDetail=$("quoteDetail"),closeQuoteDetail=$("closeQuoteDetail"),detailName=$("detailName"),detailEmail=$("detailEmail"),detailService=$("detailService"),detailEstimate=$("detailEstimate"),detailCountry=$("detailCountry"),detailNextStep=$("detailNextStep"),detailRequirements=$("detailRequirements"),detailAddons=$("detailAddons"),adminReply=$("adminReply"),detailStatus=$("detailStatus"),sendAdminReply=$("sendAdminReply"),emailStatus=$("emailStatus"),emailTo=$("emailTo"),emailSubject=$("emailSubject"),emailBody=$("emailBody"),sendEmailBtn=$("sendEmailBtn"),clearEmailBtn=$("clearEmailBtn"),useQuoteTemplate=$("useQuoteTemplate"),gmailStatus=$("gmailStatus"),gmailEmailStatus=$("gmailEmailStatus"),ticketRows=$("ticketRows"),ticketConversation=$("ticketConversation"),globalSearch=$("globalSearch");
+let quotationMap=new Map(),activeQuotationId=null,activeTicketId=null,stopQuotationListener=null,ticketFilter="all",searchTerm="";
+const esc=v=>String(v??"").replace(/[&<>\"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[c]));
+const dateVal=v=>v?.toDate?v.toDate():new Date(v||Date.now());
+const formatDate=v=>{const d=dateVal(v);return Number.isNaN(d.getTime())?"—":d.toLocaleString([],{month:"short",day:"numeric",hour:"numeric",minute:"2-digit"})};
+const formatTime=v=>{const d=dateVal(v);return Number.isNaN(d.getTime())?"—":d.toLocaleString([],{month:"short",day:"numeric",year:"numeric",hour:"numeric",minute:"2-digit"})};
+const isAuthorized=e=>AUTHORIZED_EMAILS.includes((e||"").toLowerCase().trim());
+const ticketId=q=>q.ticketId||`ST-${String(q.id||"").slice(-6).toUpperCase()}`;
+const ticketStatus=q=>{const s=q.ticketStatus||q.status||"New";if(["Contacted","Proposal Sent","Negotiation"].includes(s))return"Replied";if(s==="In Development")return"Open";if(s==="Completed")return"Resolved";if(s==="Declined")return"Closed";if(s==="Reviewing")return"Pending";return s};
+const statusClass=s=>String(s||"New").toLowerCase().replace(/\s+/g,"-");
 
-const AUTHORIZED_EMAILS = ["yahhclffjnd@gmail.com"];
-const isAuthorized = (email) => AUTHORIZED_EMAILS.includes((email || "").toLowerCase().trim());
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const emailCfg = window.STEADFAST_EMAIL_CONFIG || {};
+function postToGmailBridge(payload){if(!emailCfg.webAppUrl)return false;try{const frameName=`steadfastAdminMail_${Date.now()}_${Math.random().toString(36).slice(2)}`,iframe=document.createElement("iframe");iframe.name=frameName;iframe.style.display="none";iframe.setAttribute("aria-hidden","true");document.body.appendChild(iframe);const form=document.createElement("form");form.method="POST";form.action=emailCfg.webAppUrl;form.target=frameName;form.style.display="none";Object.entries(payload).forEach(([k,v])=>{const i=document.createElement("input");i.type="hidden";i.name=k;i.value=String(v??"");form.appendChild(i)});document.body.appendChild(form);form.submit();setTimeout(()=>{iframe.remove();form.remove()},12000);return true}catch(e){console.error(e);return false}}
 
-const adminEmail = document.getElementById("adminEmail");
-const adminName = document.getElementById("adminName");
-const avatar = document.getElementById("adminAvatar");
-const logoutBtn = document.getElementById("logoutBtn");
-const quotationRows = document.getElementById("quotationRows");
-const quoteDetail = document.getElementById("quoteDetail");
-const closeQuoteDetail = document.getElementById("closeQuoteDetail");
-const detailName = document.getElementById("detailName");
-const detailEmail = document.getElementById("detailEmail");
-const detailService = document.getElementById("detailService");
-const detailEstimate = document.getElementById("detailEstimate");
-const detailCountry = document.getElementById("detailCountry");
-const detailNextStep = document.getElementById("detailNextStep");
-const detailRequirements = document.getElementById("detailRequirements");
-const detailAddons = document.getElementById("detailAddons");
-const adminReply = document.getElementById("adminReply");
-const detailStatus = document.getElementById("detailStatus");
-const sendAdminReply = document.getElementById("sendAdminReply");
-const emailStatus = document.getElementById("emailStatus");
-const emailTo = document.getElementById("emailTo");
-const emailSubject = document.getElementById("emailSubject");
-const emailBody = document.getElementById("emailBody");
-const sendEmailBtn = document.getElementById("sendEmailBtn");
-const clearEmailBtn = document.getElementById("clearEmailBtn");
-const useQuoteTemplate = document.getElementById("useQuoteTemplate");
-const gmailStatus = document.getElementById("gmailStatus");
-const gmailEmailStatus = document.getElementById("gmailEmailStatus");
-
-let quotationMap = new Map();
-let activeQuotationId = null;
-let stopQuotationListener = null;
-
-const escapeHtml = (value) => String(value ?? "").replace(/[&<>\"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;", "'":"&#039;"}[ch]));
-const formatDate = (value) => {
-  if (!value) return "Just now";
-  const d = value?.toDate ? value.toDate() : new Date(value);
-  return Number.isNaN(d.getTime()) ? "—" : d.toLocaleString([], {month:"short", day:"numeric", hour:"numeric", minute:"2-digit"});
-};
-
-function postToGmailBridge(payload) {
-  if (!emailCfg.webAppUrl) return false;
-  try {
-    const frameName = `steadfastAdminMail_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-    const iframe = document.createElement('iframe');
-    iframe.name = frameName;
-    iframe.style.display = 'none';
-    iframe.setAttribute('aria-hidden', 'true');
-    document.body.appendChild(iframe);
-    const form = document.createElement('form');
-    form.method = 'POST';
-    form.action = emailCfg.webAppUrl;
-    form.target = frameName;
-    form.style.display = 'none';
-    Object.entries(payload).forEach(([key, value]) => {
-      const input = document.createElement('input');
-      input.type = 'hidden'; input.name = key; input.value = String(value ?? '');
-      form.appendChild(input);
-    });
-    document.body.appendChild(form);
-    form.submit();
-    setTimeout(() => { iframe.remove(); form.remove(); }, 12000);
-    return true;
-  } catch (e) {
-    console.error('Gmail bridge error:', e);
-    return false;
-  }
+function renderQuotations(items){
+ if(!quotationRows)return;
+ if(!items.length){quotationRows.innerHTML='<tr><td colspan="6">No quotations received yet.</td></tr>';return}
+ quotationRows.innerHTML=items.map(q=>`<tr><td><strong>${esc(q.customerName||"Unknown")}</strong><small>${esc(q.customerEmail||"")}</small></td><td>${esc(q.service||"—")}</td><td>${esc(q.estimate||"—")}</td><td><span class="pill ${statusClass(q.status||"New")}">${esc(q.status||"New")}</span></td><td>${formatDate(q.createdAt||q.created)}</td><td><button class="text-btn view-quote" data-id="${esc(q.id)}">View</button></td></tr>`).join("");
+ quotationRows.querySelectorAll(".view-quote").forEach(b=>b.addEventListener("click",()=>openQuotation(b.dataset.id)));
 }
+function renderRecent(items){if(!recentRows)return;const rows=items.slice(0,5);recentRows.innerHTML=rows.length?rows.map(q=>`<tr><td><strong>${esc(q.customerName||"Unknown")}</strong><small>${esc(q.customerEmail||"")}</small></td><td>${esc(q.service||"—")}</td><td>${esc(q.estimate||"—")}</td><td><span class="pill ${statusClass(q.status||"New")}">${esc(q.status||"New")}</span></td><td>${formatDate(q.createdAt||q.created)}</td></tr>`).join(""):'<tr><td colspan="5">No quotations received yet.</td></tr>'}
+function openQuotation(id){const q=quotationMap.get(id);if(!q)return;activeQuotationId=id;if(quoteDetail)quoteDetail.hidden=false;detailName.textContent=q.customerName||"Unknown client";detailEmail.textContent=q.customerEmail||"";detailService.textContent=q.service||"—";detailEstimate.textContent=`${q.estimate||"—"}${q.currency?` ${q.currency}`:""}`;detailCountry.textContent=q.country||"—";detailNextStep.textContent=q.preferredNextStep||"Email discussion";detailRequirements.textContent=q.requirements||"—";detailAddons.textContent=Array.isArray(q.addons)&&q.addons.length?q.addons.join(" • "):"None";detailStatus.value=q.status||"New";adminReply.value="";emailStatus.textContent="";emailTo.value=q.customerEmail||"";emailSubject.value="Regarding your STEADFAST website quotation";emailBody.value=`Hello ${q.customerName||"there"},\n\nThank you for your website quotation request. I have reviewed your requirements and would be happy to discuss the next steps with you.\n\nYour estimated starting point is ${q.estimate||"—"} ${q.currency||""}.\n\nYour project may qualify for UP TO 75% OFF, subject to final review and eligibility.\n\nPlease let me know if you would like to continue by email or schedule a meeting.\n\nThank you,\nCliff Jandee Medrano\nSTEADFAST`;quoteDetail.scrollIntoView({behavior:"smooth",block:"start"})}
+closeQuoteDetail?.addEventListener("click",()=>{quoteDetail.hidden=true;activeQuotationId=null});
 
-onAuthStateChanged(auth, async (user) => {
-  if (!user) { window.location.replace("./index.html"); return; }
-  const email = (user.email || "").toLowerCase().trim();
-  if (!isAuthorized(email)) { await signOut(auth); window.location.replace("./index.html"); return; }
-  const displayName = user.displayName || "Cliff Jandee";
-  if (adminName) adminName.textContent = displayName;
-  if (adminEmail) adminEmail.textContent = email;
-  if (avatar) {
-    if (user.photoURL) { avatar.src = user.photoURL; avatar.alt = displayName; avatar.classList.add("has-photo"); }
-    else avatar.classList.remove("has-photo");
-  }
-  if (gmailStatus) gmailStatus.textContent = emailCfg.webAppUrl ? 'CONNECTED' : 'SETUP REQUIRED';
-  if (stopQuotationListener) stopQuotationListener();
-  stopQuotationListener = subscribeToQuotations();
-});
+function updateMetrics(items){const count=(id,n)=>{const e=$(id);if(e)e.textContent=n};count("metricNew",items.filter(q=>ticketStatus(q)==="New").length);count("metricPending",items.filter(q=>ticketStatus(q)==="Pending").length);count("metricContacted",items.filter(q=>ticketStatus(q)==="Replied").length);count("metricProgress",items.filter(q=>ticketStatus(q)==="Open").length);count("metricConverted",items.filter(q=>["Approved","Completed"].includes(q.status)).length);updateTicketCounts(items)}
+function updateTicketCounts(items){const counts={all:items.length,new:0,open:0,pending:0,replied:0,resolved:0,closed:0};items.forEach(q=>{const s=ticketStatus(q).toLowerCase();if(counts[s]!=null)counts[s]++});Object.entries(counts).forEach(([k,v])=>{const e=$("count"+k.charAt(0).toUpperCase()+k.slice(1));if(e)e.textContent=v});const nav=$("navTicketCount");if(nav)nav.textContent=counts.new;}
+function subscribeToQuotations(){return onSnapshot(collection(db,"quotations"),snapshot=>{const items=snapshot.docs.map(s=>({id:s.id,...s.data()}));items.sort((a,b)=>dateVal(b.createdAt||b.created)-dateVal(a.createdAt||a.created));quotationMap=new Map(items.map(q=>[q.id,q]));renderQuotations(items);renderRecent(items);updateMetrics(items);renderTickets();if(activeTicketId&&quotationMap.has(activeTicketId))openTicket(activeTicketId)},err=>{console.error(err);if(quotationRows)quotationRows.innerHTML='<tr><td colspan="6">Could not load quotations. Check Firestore Rules.</td></tr>';if(ticketRows)ticketRows.innerHTML='<div class="ticket-empty">Could not load tickets. Check Firestore Rules.</div>'})}
 
-function renderQuotations(items) {
-  if (!quotationRows) return;
-  if (!items.length) { quotationRows.innerHTML = '<tr><td colspan="6">No quotations received yet.</td></tr>'; return; }
-  quotationRows.innerHTML = items.map(q => `<tr><td><strong>${escapeHtml(q.customerName || "Unknown")}</strong><small>${escapeHtml(q.customerEmail || "")}</small></td><td>${escapeHtml(q.service || "—")}</td><td>${escapeHtml(q.estimate || "—")}</td><td><span class="pill ${String(q.status || "New").toLowerCase().replace(/\s+/g,'-')}">${escapeHtml(q.status || "New")}</span></td><td>${formatDate(q.createdAt || q.created)}</td><td><button class="text-btn view-quote" data-id="${escapeHtml(q.id)}">View</button></td></tr>`).join("");
-  quotationRows.querySelectorAll('.view-quote').forEach(btn => btn.addEventListener('click', () => openQuotation(btn.dataset.id)));
-}
+function ticketMatches(q){const status=ticketStatus(q).toLowerCase(), text=`${q.customerName||""} ${q.customerEmail||""} ${q.service||""} ${q.requirements||""} ${q.company||""}`.toLowerCase();return(ticketFilter==="all"||status===ticketFilter)&&(!searchTerm||text.includes(searchTerm))}
+function renderTickets(){if(!ticketRows)return;let items=[...quotationMap.values()].filter(ticketMatches).sort((a,b)=>dateVal(b.lastReplyAt||b.createdAt||b.created)-dateVal(a.lastReplyAt||a.createdAt||a.created));if(!items.length){ticketRows.innerHTML='<div class="ticket-empty">No tickets match this view.</div>';return}ticketRows.innerHTML=items.map(q=>{const initials=(q.customerName||"Customer").split(/\s+/).map(x=>x[0]).slice(0,2).join("").toUpperCase();const s=ticketStatus(q);const subject=q.ticketSubject||`${q.service||"Website"} inquiry`;const preview=q.lastAdminReply||q.requirements||"New website quotation request";return `<button class="ticket-row ${activeTicketId===q.id?"active":""}" data-ticket="${esc(q.id)}"><div class="ticket-top"><div class="ticket-avatar">${esc(initials)}</div><div class="ticket-meta"><div class="ticket-id">#${esc(ticketId(q))} <span class="pill ${statusClass(s)}">${esc(s)}</span></div><div class="ticket-subject">${esc(subject)}</div><div class="ticket-preview">${esc(preview)}</div></div></div><div class="ticket-bottom"><span class="ticket-customer">${esc(q.customerName||"Unknown")}</span><span class="ticket-time">${esc(formatDate(q.lastReplyAt||q.createdAt||q.created))}</span></div></button>`}).join("");ticketRows.querySelectorAll("[data-ticket]").forEach(b=>b.addEventListener("click",()=>openTicket(b.dataset.ticket)))}
+function messageHtml(role,name,body,time){return `<div class="message ${role}"><img class="message-avatar" src="${role==="admin"?"../assets/steadfast-mark.png":"../assets/steadfast-mark.png"}" alt=""><div class="message-bundle"><p class="message-author">${esc(name)} <span class="message-time">${esc(formatTime(time))}</span></p><div class="message-bubble">${esc(body)}</div></div></div>`}
+function openTicket(id){const q=quotationMap.get(id);if(!q||!ticketConversation)return;activeTicketId=id;renderTickets();const s=ticketStatus(q),subject=q.ticketSubject||`${q.service||"Website"} inquiry`;const messages=Array.isArray(q.ticketMessages)&&q.ticketMessages.length?q.ticketMessages:[{role:"customer",name:q.customerName||"Customer",body:q.requirements||"I would like to request a quotation for my website project.",createdAt:q.createdAt||q.created}];const conversation=messages.map(m=>messageHtml(m.role||"customer",m.name||(m.role==="admin"?"STEADFAST":"Customer"),m.body||"",m.createdAt||q.createdAt)).join("");ticketConversation.innerHTML=`<div class="ticket-view"><div class="ticket-view-head"><div class="ticket-title-row"><div><div class="ticket-id">#${esc(ticketId(q))} <span class="pill ${statusClass(s)}">${esc(s)}</span></div><h2>${esc(subject)}</h2><p>Created on ${esc(formatTime(q.createdAt||q.created))}</p></div><select class="ticket-status-btn" id="ticketStatusSelect"><option ${s==="New"?"selected":""}>New</option><option ${s==="Open"?"selected":""}>Open</option><option ${s==="Pending"?"selected":""}>Pending</option><option ${s==="Replied"?"selected":""}>Replied</option><option ${s==="Resolved"?"selected":""}>Resolved</option><option ${s==="Closed"?"selected":""}>Closed</option></select></div><div class="ticket-info-grid"><div class="info-card"><h4>♙ Customer Information</h4><p>Name &nbsp; <b>${esc(q.customerName||"—")}</b></p><p>Email &nbsp; <b>${esc(q.customerEmail||"—")}</b></p><p>Company &nbsp; <b>${esc(q.company||"—")}</b></p><p>Phone &nbsp; <b>${esc(q.phone||"—")}</b></p></div><div class="info-card"><h4>▤ Related Quotation</h4><p>Website Type &nbsp; <b>${esc(q.service||"—")}</b></p><p>Estimate &nbsp; <b>${esc(q.estimate||"—")} ${esc(q.currency||"")}</b></p><p>Country &nbsp; <b>${esc(q.country||"—")}</b></p><p>Reference ID &nbsp; <b>${esc(ticketId(q))}</b></p></div></div></div><div class="conversation-scroll" id="conversationScroll">${conversation}</div><div class="ticket-composer"><div class="composer-tabs"><button class="composer-tab active">Reply</button><button class="composer-tab" type="button" title="Internal notes are saved with the ticket when enabled">Internal Note</button></div><textarea id="ticketReplyInput" placeholder="Type your reply here…"></textarea><div class="composer-actions"><div class="composer-tools"><button type="button" title="Attachment">⌕</button><button type="button" title="Image">▧</button><button type="button" title="Emoji">☺</button></div><button class="primary" id="ticketSendReply">➤ &nbsp; Send Reply</button></div><p class="email-status" id="ticketStatusMessage"></p></div></div>`;
+$("ticketStatusSelect")?.addEventListener("change",async e=>{try{await updateDoc(doc(db,"quotations",id),{ticketStatus:e.target.value,updatedAt:new Date()});}catch(err){console.error(err);}});
+$("ticketSendReply")?.addEventListener("click",()=>sendTicketReply(q));
+const sc=$("conversationScroll");if(sc)sc.scrollTop=sc.scrollHeight}
+async function sendTicketReply(q){const input=$("ticketReplyInput"),status=$("ticketStatusMessage"),button=$("ticketSendReply"),message=input?.value.trim();if(!message){status.textContent="Write a reply first.";return}if(!q.customerEmail){status.textContent="This ticket has no customer email.";return}button.disabled=true;button.textContent="Sending…";const sent=postToGmailBridge({action:"sendEmail",to:q.customerEmail,subject:`Re: ${q.ticketSubject||"Your STEADFAST website quotation"}`,body:message});if(sent){try{await updateDoc(doc(db,"quotations",q.id),{ticketStatus:"Replied",lastAdminReply:message,lastReplyAt:new Date(),ticketMessages:arrayUnion({role:"admin",name:adminName?.textContent||"STEADFAST",body:message,createdAt:new Date().toISOString()})});status.textContent="Reply sent through Gmail and added to this ticket.";input.value=""}catch(e){console.error(e);status.textContent="Email sent, but ticket history could not be updated."}}else status.textContent="Gmail request could not be started.";button.disabled=false;button.textContent="➤  Send Reply"}
 
-function openQuotation(id) {
-  const q = quotationMap.get(id);
-  if (!q || !quoteDetail) return;
-  activeQuotationId = id;
-  quoteDetail.hidden = false;
-  detailName.textContent = q.customerName || "Unknown client";
-  detailEmail.textContent = q.customerEmail || "";
-  detailService.textContent = q.service || "—";
-  detailEstimate.textContent = `${q.estimate || "—"}${q.currency ? ` ${q.currency}` : ''}`;
-  detailCountry.textContent = q.country || "—";
-  detailNextStep.textContent = q.preferredNextStep || "Email discussion";
-  detailRequirements.textContent = q.requirements || "—";
-  detailAddons.textContent = Array.isArray(q.addons) && q.addons.length ? q.addons.join(' • ') : "None";
-  detailStatus.value = q.status || "New";
-  adminReply.value = "";
-  emailStatus.textContent = "";
-  if (emailTo) emailTo.value = q.customerEmail || "";
-  if (emailSubject) emailSubject.value = `Regarding your STEADFAST website quotation`;
-  if (emailBody) emailBody.value = `Hello ${q.customerName || 'there'},\n\nThank you for your website quotation request. I have reviewed your requirements and would be happy to discuss the next steps with you.\n\nYour estimated starting point is ${q.estimate || '—'} ${q.currency || ''}.\n\nYour project may qualify for UP TO 75% OFF, subject to final review and eligibility.\n\nPlease let me know if you would like to continue by email or schedule a meeting.\n\nThank you,\nCliff Jandee Medrano\nSTEADFAST`;
-  quoteDetail.scrollIntoView({behavior:"smooth", block:"start"});
-}
+async function updateQuotationStatus(){if(!activeQuotationId)return;await updateDoc(doc(db,"quotations",activeQuotationId),{status:detailStatus.value,updatedAt:new Date()})}
+detailStatus?.addEventListener("change",async()=>{try{await updateQuotationStatus();emailStatus.textContent="Status updated."}catch(e){emailStatus.textContent="Could not update status."}});
+async function sendGmail(to,subject,body,statusEl,button){if(!emailCfg.webAppUrl){statusEl.textContent="Gmail is not connected yet. Add the Google Apps Script Web App URL to email-config.js.";return false}if(!to||!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)){statusEl.textContent="Please enter a valid recipient email.";return false}if(!subject||!body){statusEl.textContent="Subject and message are required.";return false}if(button){button.disabled=true;button.textContent="Sending…"}const sent=postToGmailBridge({action:"sendEmail",to,subject,body});statusEl.textContent=sent?"Email sent through Gmail.":"Gmail request could not be started.";if(button){button.disabled=false;button.textContent="Send via Gmail"}return sent}
+sendAdminReply?.addEventListener("click",async()=>{const q=quotationMap.get(activeQuotationId),message=adminReply?.value.trim()||"";if(!q||!message){emailStatus.textContent="Write a reply first.";return}const sent=await sendGmail(q.customerEmail,"Re: Your STEADFAST website quotation",message,emailStatus,sendAdminReply);if(sent){try{await updateDoc(doc(db,"quotations",activeQuotationId),{status:"Contacted",lastAdminReply:message,lastReplyAt:new Date(),ticketMessages:arrayUnion({role:"admin",name:adminName?.textContent||"STEADFAST",body:message,createdAt:new Date().toISOString()})})}catch(e){console.warn(e)}adminReply.value="";detailStatus.value="Contacted";emailStatus.textContent="Reply sent through Gmail. The customer can reply to your Gmail address."}});
+sendEmailBtn?.addEventListener("click",async()=>sendGmail(emailTo.value.trim(),emailSubject.value.trim(),emailBody.value.trim(),gmailEmailStatus,sendEmailBtn));
+clearEmailBtn?.addEventListener("click",()=>{emailTo.value="";emailSubject.value="Regarding your STEADFAST website quotation";emailBody.value="";gmailEmailStatus.textContent=""});
+useQuoteTemplate?.addEventListener("click",()=>{emailSubject.value="Regarding your STEADFAST website quotation";emailBody.value=`Hello there,\n\nThank you for your website quotation request. I have reviewed your requirements and would be happy to discuss the next steps with you.\n\nYour project may qualify for UP TO 75% OFF, subject to final review and eligibility.\n\nPlease let me know if you would like to continue by email or schedule a meeting.\n\nThank you,\nCliff Jandee Medrano\nSTEADFAST`;gmailEmailStatus.textContent="Template loaded."});
 
-closeQuoteDetail?.addEventListener('click', () => { if (quoteDetail) quoteDetail.hidden = true; activeQuotationId = null; });
+$("ticketTabs")?.addEventListener("click",e=>{const b=e.target.closest(".ticket-tab");if(!b)return;ticketFilter=b.dataset.filter;document.querySelectorAll(".ticket-tab").forEach(x=>x.classList.toggle("active",x===b));renderTickets()});
+globalSearch?.addEventListener("input",e=>{searchTerm=e.target.value.toLowerCase().trim();renderTickets()});
+$("newTicketBtn")?.addEventListener("click",()=>{showSection("email");emailTo?.focus()});
 
-function subscribeToQuotations() {
-  return onSnapshot(collection(db, 'quotations'), snapshot => {
-    const items = snapshot.docs.map(snap => ({id:snap.id, ...snap.data()}));
-    items.sort((a,b) => {
-      const av = a.createdAt?.toMillis ? a.createdAt.toMillis() : Date.parse(a.created || '') || 0;
-      const bv = b.createdAt?.toMillis ? b.createdAt.toMillis() : Date.parse(b.created || '') || 0;
-      return bv - av;
-    });
-    quotationMap = new Map(items.map(q => [q.id,q]));
-    renderQuotations(items);
-    const metrics = document.querySelectorAll('.metrics article strong');
-    if (metrics[0]) metrics[0].textContent = items.filter(q => (q.status || 'New') === 'New').length;
-    if (metrics[1]) metrics[1].textContent = items.filter(q => ['New','Reviewing','Proposal Sent'].includes(q.status || 'New')).length;
-    if (metrics[2]) metrics[2].textContent = items.filter(q => q.status === 'Contacted').length;
-    if (metrics[3]) metrics[3].textContent = items.filter(q => q.status === 'In Development').length;
-    if (metrics[4]) metrics[4].textContent = items.filter(q => q.status === 'Approved' || q.status === 'Completed').length;
-  }, error => {
-    console.error('Quotation listener failed:', error);
-    if (quotationRows) quotationRows.innerHTML = '<tr><td colspan="6">Could not load quotations. Check Firestore Rules.</td></tr>';
-  });
-}
+logoutBtn?.addEventListener("click",async()=>{logoutBtn.disabled=true;logoutBtn.textContent="Signing out…";try{await signOut(auth)}finally{window.location.replace("./index.html")}});
+const sections=[...document.querySelectorAll(".section")],navItems=[...document.querySelectorAll(".nav-item")],title=$("pageTitle"),sidebar=$("sidebar");
+function showSection(id){sections.forEach(s=>s.classList.toggle("active",s.id===id));navItems.forEach(n=>n.classList.toggle("active",n.dataset.section===id));const a=navItems.find(n=>n.dataset.section===id);if(title)title.textContent=a?.textContent.trim()||"Dashboard";sidebar?.classList.remove("open");window.scrollTo({top:0,behavior:"smooth"})}
+navItems.forEach(n=>n.addEventListener("click",()=>showSection(n.dataset.section)));document.querySelectorAll("[data-section-link]").forEach(b=>b.addEventListener("click",()=>showSection(b.dataset.sectionLink)));$("mobileMenu")?.addEventListener("click",()=>sidebar?.classList.toggle("open"));
 
-async function updateQuotationStatus() {
-  if (!activeQuotationId) return;
-  await updateDoc(doc(db, 'quotations', activeQuotationId), { status: detailStatus.value, updatedAt: new Date() });
-}
-
-detailStatus?.addEventListener('change', async () => {
-  try { await updateQuotationStatus(); emailStatus.textContent = 'Status updated.'; }
-  catch (e) { console.error(e); emailStatus.textContent = 'Could not update status.'; }
-});
-
-async function sendGmail(to, subject, body, statusEl, button) {
-  if (!emailCfg.webAppUrl) { if (statusEl) statusEl.textContent = 'Gmail is not connected yet. Add the Google Apps Script Web App URL to email-config.js.'; return false; }
-  if (!to || !/^\S+@\S+\.\S+$/.test(to)) { if (statusEl) statusEl.textContent = 'Please enter a valid recipient email.'; return false; }
-  if (!subject || !body) { if (statusEl) statusEl.textContent = 'Subject and message are required.'; return false; }
-  if (button) { button.disabled = true; button.textContent = 'Sending…'; }
-  const sent = postToGmailBridge({ action:'sendEmail', to, subject, body });
-  if (statusEl) statusEl.textContent = sent ? 'Email sent through Gmail.' : 'Gmail request could not be started.';
-  if (button) { button.disabled = false; button.textContent = 'Send via Gmail'; }
-  return sent;
-}
-
-sendAdminReply?.addEventListener('click', async () => {
-  const q = quotationMap.get(activeQuotationId);
-  const message = adminReply?.value.trim() || '';
-  if (!q || !message) { if (emailStatus) emailStatus.textContent = 'Write a reply first.'; return; }
-  const subject = `Re: Your STEADFAST website quotation`;
-  const sent = await sendGmail(q.customerEmail, subject, message, emailStatus, sendAdminReply);
-  if (sent) {
-    try { await updateDoc(doc(db, 'quotations', activeQuotationId), { status:'Contacted', lastAdminReply:message, lastReplyAt:new Date() }); }
-    catch (e) { console.warn('Could not update quotation status after email:', e); }
-    adminReply.value = '';
-    if (detailStatus) detailStatus.value = 'Contacted';
-    emailStatus.textContent = 'Reply sent through Gmail. The customer can reply to your Gmail address.';
-  }
-});
-
-sendEmailBtn?.addEventListener('click', async () => {
-  await sendGmail(emailTo?.value.trim(), emailSubject?.value.trim(), emailBody?.value.trim(), gmailEmailStatus, sendEmailBtn);
-});
-clearEmailBtn?.addEventListener('click', () => {
-  if (emailTo) emailTo.value = '';
-  if (emailSubject) emailSubject.value = 'Regarding your STEADFAST website quotation';
-  if (emailBody) emailBody.value = '';
-  if (gmailEmailStatus) gmailEmailStatus.textContent = '';
-});
-useQuoteTemplate?.addEventListener('click', () => {
-  if (emailSubject) emailSubject.value = 'Regarding your STEADFAST website quotation';
-  if (emailBody) emailBody.value = `Hello there,\n\nThank you for your website quotation request. I have reviewed your requirements and would be happy to discuss the next steps with you.\n\nYour project may qualify for UP TO 75% OFF, subject to final review and eligibility.\n\nPlease let me know if you would like to continue by email or schedule a meeting.\n\nThank you,\nCliff Jandee Medrano\nSTEADFAST`;
-  if (gmailEmailStatus) gmailEmailStatus.textContent = 'Template loaded.';
-});
-
-logoutBtn?.addEventListener("click", async () => {
-  logoutBtn.disabled = true; logoutBtn.textContent = "Signing out…";
-  try { await signOut(auth); } finally { window.location.replace("./index.html"); }
-});
-
-const sections = [...document.querySelectorAll(".section")];
-const navItems = [...document.querySelectorAll(".nav-item")];
-const title = document.getElementById("pageTitle");
-const sidebar = document.getElementById("sidebar");
-function showSection(id) {
-  sections.forEach(section => section.classList.toggle("active", section.id === id));
-  navItems.forEach(item => item.classList.toggle("active", item.dataset.section === id));
-  const active = navItems.find(item => item.dataset.section === id);
-  if (title) title.textContent = active ? active.textContent.trim() : "Dashboard";
-  sidebar?.classList.remove("open");
-  window.scrollTo({ top:0, behavior:"smooth" });
-}
-navItems.forEach(item => item.addEventListener("click", () => showSection(item.dataset.section)));
-document.querySelectorAll("[data-section-link]").forEach(btn => btn.addEventListener("click", () => showSection(btn.dataset.sectionLink)));
-document.getElementById("mobileMenu")?.addEventListener("click", () => sidebar?.classList.toggle("open"));
+onAuthStateChanged(auth,async user=>{if(!user){window.location.replace("./index.html");return}const email=(user.email||"").toLowerCase().trim();if(!isAuthorized(email)){await signOut(auth);window.location.replace("./index.html");return}const displayName=user.displayName||"Cliff Jandee";adminName.textContent=displayName;adminEmail.textContent=email;if(user.photoURL){avatar.src=user.photoURL;avatar.alt=displayName;avatar.classList.add("has-photo")}else avatar.classList.remove("has-photo");const connected=!!emailCfg.webAppUrl;if(gmailStatus)gmailStatus.textContent=connected?"CONNECTED":"SETUP REQUIRED";const dg=$("dashboardGmail");if(dg)dg.textContent=connected?"Connected":"Setup Required";if(stopQuotationListener)stopQuotationListener();stopQuotationListener=subscribeToQuotations()});

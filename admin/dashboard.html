@@ -3,122 +3,121 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#090812">
+  <meta name="theme-color" content="#080810">
   <title>STEADFAST Admin Dashboard</title>
   <link rel="stylesheet" href="./dashboard.css">
 </head>
 <body>
-  <div class="app">
-    <aside class="sidebar" id="sidebar">
-      <a class="side-brand" href="../index.html">
-        <span class="mark"><img src="../assets/steadfast-mark.png" alt="STEADFAST"></span>
-        <span><b>STEADFAST</b><small>ADMIN</small></span>
-      </a>
+<div class="app">
+  <aside class="sidebar" id="sidebar">
+    <a class="side-brand" href="../index.html">
+      <span class="brand-mark"><img src="../assets/steadfast-mark.png" alt="STEADFAST"></span>
+      <span><b>STEADFAST</b><small>ADMIN</small></span>
+    </a>
 
-      <nav>
-        <button class="nav-item active" data-section="dashboard">Dashboard</button>
-        <button class="nav-item" data-section="quotations">Quotations</button>
-        <button class="nav-item" data-section="leads">Leads</button>
-        <button class="nav-item" data-section="clients">Clients</button>
-        <button class="nav-item" data-section="email">Email / Gmail</button>
-        <button class="nav-item" data-section="crm">CRM Integration</button>
-        <button class="nav-item" data-section="analytics">Analytics</button>
-        <button class="nav-item" data-section="settings">Settings</button>
-      </nav>
+    <nav class="main-nav">
+      <button class="nav-item active" data-section="dashboard"><span class="nav-icon">⌂</span><span>Dashboard</span></button>
+      <button class="nav-item" data-section="quotations"><span class="nav-icon">▤</span><span>Quotations</span></button>
+      <button class="nav-item" data-section="leads"><span class="nav-icon">♧</span><span>Leads</span></button>
+      <button class="nav-item" data-section="clients"><span class="nav-icon">♙</span><span>Clients</span></button>
+      <button class="nav-item" data-section="tickets"><span class="nav-icon">◌</span><span>Support Tickets</span><span class="nav-count" id="navTicketCount">0</span></button>
+      <button class="nav-item" data-section="email"><span class="nav-icon">▱</span><span>Email / Gmail</span></button>
+      <button class="nav-item" data-section="crm"><span class="nav-icon">⌕</span><span>CRM Integration</span></button>
+      <button class="nav-item" data-section="analytics"><span class="nav-icon">▥</span><span>Analytics</span></button>
+      <button class="nav-item" data-section="settings"><span class="nav-icon">⚙</span><span>Settings</span></button>
+    </nav>
 
-      <div class="side-bottom">
-        <a href="../index.html">View Website</a>
-        <button id="logoutBtn">Sign out</button>
-      </div>
-    </aside>
+    <div class="sidebar-quote">
+      <div class="quote-icon">◉</div>
+      <strong>Good support<br>builds great<br>relationships.</strong>
+      <small>STEADFAST</small>
+    </div>
 
-    <main class="main">
-      <header class="topbar">
-        <button class="mobile-menu" id="mobileMenu" aria-label="Open menu">☰</button>
-        <div>
-          <p class="kicker">STEADFAST ADMIN</p>
-          <h1 id="pageTitle">Dashboard</h1>
-        </div>
+    <div class="side-bottom">
+      <a href="../index.html"><span>↗</span> View Website</a>
+      <button id="logoutBtn"><span>↪</span> Sign out</button>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <button class="mobile-menu" id="mobileMenu" aria-label="Open menu">☰</button>
+      <div class="top-search"><span>⌕</span><input id="globalSearch" placeholder="Search tickets, customers, or keywords…" autocomplete="off"></div>
+      <div class="account-tools">
+        <button class="icon-btn" title="Notifications" aria-label="Notifications">♧<i>3</i></button>
+        <button class="icon-btn" title="Toggle theme" aria-label="Toggle theme">☾</button>
         <div class="account">
-          <div class="account-details">
-            <strong id="adminName">Checking account…</strong>
-            <span id="adminEmail">Authenticating…</span>
-          </div>
           <img id="adminAvatar" class="avatar" src="../assets/steadfast-mark.png" alt="STEADFAST">
+          <div class="account-details"><strong id="adminName">Checking account…</strong><span id="adminEmail">Authenticating…</span></div>
+          <span class="chevron">⌄</span>
         </div>
-      </header>
+      </div>
+    </header>
 
+    <div class="content">
       <section id="dashboard" class="section active">
-        <div class="welcome">
-          <div><span>Welcome back, Cliff.</span><h2>Manage your website inquiries.</h2></div>
-          <a class="primary" href="../index.html#quote">View Website</a>
+        <div class="page-heading">
+          <div><p class="eyebrow">STEADFAST ADMIN</p><h1>Dashboard</h1><p>Manage your website inquiries, quotations, and customer conversations.</p></div>
+          <button class="primary" data-section-link="tickets">+ New Ticket</button>
         </div>
-
         <div class="metrics">
-          <article><span>New Quotes</span><strong>12</strong><small>Needs review</small></article>
-          <article><span>Pending</span><strong>7</strong><small>Awaiting response</small></article>
-          <article><span>Contacted</span><strong>3</strong><small>Conversation started</small></article>
-          <article><span>In Progress</span><strong>2</strong><small>Active projects</small></article>
-          <article><span>Converted</span><strong>5</strong><small>Approved projects</small></article>
+          <article><span>New Quotes</span><strong id="metricNew">0</strong><small>Needs review</small></article>
+          <article><span>Pending</span><strong id="metricPending">0</strong><small>Awaiting response</small></article>
+          <article><span>Contacted</span><strong id="metricContacted">0</strong><small>Conversation started</small></article>
+          <article><span>In Progress</span><strong id="metricProgress">0</strong><small>Active projects</small></article>
+          <article><span>Converted</span><strong id="metricConverted">0</strong><small>Approved projects</small></article>
         </div>
-
-        <div class="grid two">
-          <article class="panel wide">
-            <div class="panel-head"><div><h3>Recent Website Quotations</h3><p>Latest client submissions.</p></div><button class="text-btn" data-section-link="quotations">View all</button></div>
-            <div class="table-wrap">
-              <table>
-                <thead><tr><th>Client</th><th>Website</th><th>Budget</th><th>Status</th><th>Date</th></tr></thead>
-                <tbody>
-                  <tr><td>Sample Client</td><td>Business Website</td><td>PHP 35,000</td><td><span class="pill pending">Pending</span></td><td>Today</td></tr>
-                  <tr><td>Sample Restaurant</td><td>Restaurant Website</td><td>PHP 28,000</td><td><span class="pill contacted">Contacted</span></td><td>Yesterday</td></tr>
-                  <tr><td>Sample Brand</td><td>E-commerce</td><td>PHP 65,000</td><td><span class="pill progress">In Progress</span></td><td>Sep 17</td></tr>
-                </tbody>
-              </table>
-            </div>
+        <div class="dashboard-grid">
+          <article class="panel dashboard-table">
+            <div class="panel-head"><div><h2>Recent Website Quotations</h2><p>Latest client submissions.</p></div><button class="text-btn" data-section-link="quotations">View all</button></div>
+            <div class="table-wrap"><table><thead><tr><th>Client</th><th>Website</th><th>Budget</th><th>Status</th><th>Date</th></tr></thead><tbody id="recentQuotationRows"><tr><td colspan="5">Loading…</td></tr></tbody></table></div>
           </article>
-
-          <article class="panel">
-            <div class="panel-head"><div><h3>Integrations</h3><p>Connection status.</p></div></div>
-            <div class="integration"><b>Gmail</b><span class="connected">Connected</span></div>
-            <div class="integration"><b>Google Sheets</b><span class="connected">Connected</span></div>
-            <div class="integration"><b>CRM</b><span class="not-connected">Not connected</span></div>
-          </article>
+          <article class="panel integration-panel"><div class="panel-head"><div><h2>Integrations</h2><p>Connection status.</p></div></div><div class="integration"><span>Gmail</span><b class="connected" id="dashboardGmail">Connected</b></div><div class="integration"><span>Google Sheets</span><b class="connected">Connected</b></div><div class="integration"><span>CRM</span><b class="not-connected">Not connected</b></div></article>
         </div>
       </section>
 
-      <section id="quotations" class="section"><div class="panel"><div class="panel-head"><div><h2>Website Quotations</h2><p>Live submissions from the STEADFAST website.</p></div><span class="live-badge">● LIVE</span></div><div class="table-wrap"><table id="quotationTable"><thead><tr><th>Client</th><th>Website</th><th>Estimate</th><th>Status</th><th>Received</th><th></th></tr></thead><tbody id="quotationRows"><tr><td colspan="6">Loading quotations…</td></tr></tbody></table></div></div><div class="quote-detail" id="quoteDetail" hidden><div class="panel"><div class="panel-head"><div><p class="kicker">QUOTE DETAILS</p><h2 id="detailName">Client</h2><p id="detailEmail">email</p></div><button class="text-btn" id="closeQuoteDetail">Close</button></div><div class="detail-grid"><div><b>Website</b><span id="detailService">—</span></div><div><b>Estimate</b><span id="detailEstimate">—</span></div><div><b>Country</b><span id="detailCountry">—</span></div><div><b>Next step</b><span id="detailNextStep">—</span></div></div><div class="detail-block"><b>Requirements</b><p id="detailRequirements">—</p></div><div class="detail-block"><b>Selected add-ons</b><p id="detailAddons">—</p></div><div class="reply-box"><div><b>Reply to client</b><small>Replies should be sent through your configured email service. Customer replies can continue in the same email thread in Gmail.</small></div><textarea id="adminReply" rows="5" placeholder="Write your reply…"></textarea><div class="reply-actions"><select id="detailStatus"><option>New</option><option>Reviewing</option><option>Contacted</option><option>Proposal Sent</option><option>Negotiation</option><option>Approved</option><option>In Development</option><option>Completed</option><option>Declined</option></select><button class="primary" id="sendAdminReply">Send Reply</button></div><p class="email-status" id="emailStatus"></p></div></div></div></section>
+      <section id="quotations" class="section">
+        <div class="page-heading compact"><div><p class="eyebrow">QUOTATION PIPELINE</p><h1>Website Quotations</h1><p>Live submissions from the STEADFAST website.</p></div><span class="live-badge">● LIVE</span></div>
+        <div class="panel"><div class="table-wrap"><table><thead><tr><th>Client</th><th>Website</th><th>Estimate</th><th>Status</th><th>Received</th><th></th></tr></thead><tbody id="quotationRows"><tr><td colspan="6">Loading quotations…</td></tr></tbody></table></div></div>
+        <div class="quote-detail" id="quoteDetail" hidden><div class="panel"><div class="panel-head"><div><p class="eyebrow">QUOTE DETAILS</p><h2 id="detailName">Client</h2><p id="detailEmail">email</p></div><button class="text-btn" id="closeQuoteDetail">Close</button></div><div class="detail-grid"><div><b>Website</b><span id="detailService">—</span></div><div><b>Estimate</b><span id="detailEstimate">—</span></div><div><b>Country</b><span id="detailCountry">—</span></div><div><b>Next step</b><span id="detailNextStep">—</span></div></div><div class="detail-block"><b>Requirements</b><p id="detailRequirements">—</p></div><div class="detail-block"><b>Selected add-ons</b><p id="detailAddons">None</p></div><div class="reply-box"><div><b>Reply to client</b><small>Replies are sent through your connected Gmail bridge.</small></div><textarea id="adminReply" rows="5" placeholder="Write your reply…"></textarea><div class="reply-actions"><select id="detailStatus"><option>New</option><option>Reviewing</option><option>Contacted</option><option>Proposal Sent</option><option>Negotiation</option><option>Approved</option><option>In Development</option><option>Completed</option><option>Declined</option></select><button class="primary" id="sendAdminReply">Send Reply</button></div><p class="email-status" id="emailStatus"></p></div></div></div>
+      </section>
+
+      <section id="tickets" class="section">
+        <div class="page-heading ticket-heading">
+          <div><p class="eyebrow">CUSTOMER COMMUNICATION</p><h1>Support Tickets</h1><p>Manage customer inquiries, quotations, and conversations all in one place.</p></div>
+          <button class="primary" id="newTicketBtn">+ New Ticket</button>
+        </div>
+        <div class="ticket-tabs" id="ticketTabs">
+          <button class="ticket-tab active" data-filter="all">All Tickets <b id="countAll">0</b></button>
+          <button class="ticket-tab" data-filter="new">New <b id="countNew">0</b></button>
+          <button class="ticket-tab" data-filter="open">Open <b id="countOpen">0</b></button>
+          <button class="ticket-tab" data-filter="pending">Pending <b id="countPending">0</b></button>
+          <button class="ticket-tab" data-filter="replied">Replied <b id="countReplied">0</b></button>
+          <button class="ticket-tab" data-filter="resolved">Resolved <b id="countResolved">0</b></button>
+          <button class="ticket-tab" data-filter="closed">Closed <b id="countClosed">0</b></button>
+        </div>
+        <div class="ticket-layout">
+          <div class="ticket-list panel" id="ticketList"><div class="ticket-list-head"><span>☷ &nbsp;Latest First</span><button id="ticketFilterBtn" title="Filter">≡</button></div><div id="ticketRows"><div class="ticket-empty">No tickets yet.</div></div></div>
+          <div class="ticket-conversation panel" id="ticketConversation">
+            <div class="ticket-empty-state"><div class="empty-ticket-icon">◌</div><h2>Select a ticket</h2><p>Choose a customer conversation from the list to view the quotation and reply.</p></div>
+          </div>
+        </div>
+      </section>
+
       <section id="leads" class="section"><div class="empty-panel"><h2>Leads</h2><p>Track new leads, contacted leads, proposal stages, and conversions.</p></div></section>
       <section id="clients" class="section"><div class="empty-panel"><h2>Clients</h2><p>Manage approved and active website clients.</p></div></section>
+
       <section id="email" class="section">
-  <div class="panel email-panel">
-    <div class="panel-head">
-      <div><p class="kicker">STEADFAST ADMIN</p><h2>Email / Gmail</h2><p>Send customer messages through your authorized Gmail account.</p></div>
-      <span class="gmail-status" id="gmailStatus">READY</span>
-    </div>
-    <div class="email-grid">
-      <div class="email-composer">
-        <label>To<input id="emailTo" type="email" placeholder="customer@example.com"></label>
-        <label>Subject<input id="emailSubject" type="text" value="Regarding your STEADFAST website quotation"></label>
-        <label>Message<textarea id="emailBody" rows="10" placeholder="Write your message..."></textarea></label>
-        <div class="email-actions"><button class="primary" id="sendEmailBtn" type="button">Send via Gmail</button><button class="text-btn" id="clearEmailBtn" type="button">Clear</button></div>
-        <p class="email-status" id="gmailEmailStatus"></p>
-        <small class="email-note">Gmail sending is handled by your Google Apps Script Web App. No Gmail password is stored in STEADFAST.</small>
-      </div>
-      <aside class="email-template-card">
-        <span class="template-label">QUICK TEMPLATE</span>
-        <h3>Quotation follow-up</h3>
-        <p>Use this after reviewing a customer's website requirements.</p>
-        <button class="text-btn" id="useQuoteTemplate" type="button">Use template</button>
-      </aside>
-    </div>
-  </div>
-</section>
+        <div class="page-heading compact"><div><p class="eyebrow">GMAIL BRIDGE</p><h1>Email / Gmail</h1><p>Send customer messages through your authorized Gmail account.</p></div><span class="gmail-status" id="gmailStatus">READY</span></div>
+        <div class="email-grid"><div class="email-composer panel"><label>To<input id="emailTo" type="email" placeholder="customer@example.com"></label><label>Subject<input id="emailSubject" type="text" value="Regarding your STEADFAST website quotation"></label><label>Message<textarea id="emailBody" rows="10" placeholder="Write your message…"></textarea></label><div class="email-actions"><button class="primary" id="sendEmailBtn" type="button">Send via Gmail</button><button class="text-btn" id="clearEmailBtn" type="button">Clear</button></div><p class="email-status" id="gmailEmailStatus"></p><small class="email-note">Gmail sending is handled by your Google Apps Script Web App. No Gmail password is stored in STEADFAST.</small></div><aside class="email-template-card panel"><span class="template-label">QUICK TEMPLATE</span><h3>Quotation follow-up</h3><p>Use this after reviewing a customer's website requirements.</p><button class="text-btn" id="useQuoteTemplate" type="button">Use template</button></aside></div>
+      </section>
       <section id="crm" class="section"><div class="empty-panel"><h2>CRM Integration</h2><p>Connect a supported CRM through its official OAuth/API or webhook.</p></div></section>
       <section id="analytics" class="section"><div class="empty-panel"><h2>Analytics</h2><p>Quotes, requested website types, average estimates, countries, currencies, and conversion data will appear here.</p></div></section>
       <section id="settings" class="section"><div class="empty-panel"><h2>Settings</h2><p>Manage administrator access and integration configuration.</p></div></section>
-    </main>
-  </div>
-
-  <script src="../email-config.js"></script><script type="module" src="./dashboard.js"></script>
+    </div>
+  </main>
+</div>
+<script src="../email-config.js"></script>
+<script type="module" src="./dashboard.js"></script>
 </body>
 </html>
