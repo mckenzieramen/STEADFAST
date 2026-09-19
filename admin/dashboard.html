@@ -89,11 +89,11 @@
           </aside>
 
           <section class="ticket-conversation-panel" aria-label="Ticket conversation">
-            <div class="conversation-empty" id="conversationEmpty"><div class="empty-orb"><svg viewBox="0 0 24 24"><path d="M7 18.5a8.5 8.5 0 1 1 3.1 1.3L5 21l1.2-3.7A8.4 8.4 0 0 1 7 18.5ZM8 10h8M8 14h5"/></svg></div><h3>Select a ticket</h3><p>Choose a ticket from the list to view the customer conversation.</p></div>
+            <div class="conversation-empty" id="conversationEmpty" hidden></div>
             <div class="conversation-shell" id="conversationShell" hidden>
               <div class="conversation-top">
                 <div class="conversation-title"><div class="ticket-id-line"><span id="activeTicketNumber">#ST-001</span><span class="ticket-status-badge open" id="activeTicketBadge">Open</span></div><h3 id="activeTicketSubject">Website quotation inquiry</h3><p id="activeTicketMeta">Created today</p></div>
-                <div class="conversation-actions"><select id="activeTicketStatus" aria-label="Ticket status"><option>Open</option><option>Pending</option><option>On Hold</option><option>Solved</option></select><button class="icon-btn small" type="button" aria-label="More ticket options"><svg viewBox="0 0 24 24"><path d="M6 12h.01M12 12h.01M18 12h.01"/></svg></button></div>
+                <div class="conversation-actions"><select id="activeTicketStatus" aria-label="Ticket status"><option value="Open">Open</option><option value="Pending">Pending</option><option value="On Hold">On Hold</option><option value="Solved">Solved</option><option value="Merged" disabled>Merged</option><option value="__merge__">🔗 Merge</option></select><button class="icon-btn small" type="button" aria-label="More ticket options"><svg viewBox="0 0 24 24"><path d="M6 12h.01M12 12h.01M18 12h.01"/></svg></button></div>
               </div>
               <div class="conversation-scroll" id="conversationScroll"><div class="conversation-feed" id="conversationFeed"></div></div>
               <div class="composer" id="composer">

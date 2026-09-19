@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-import { getFirestore, collection, onSnapshot, updateDoc, doc, arrayUnion } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
+import { getFirestore, collection, onSnapshot, updateDoc, doc, arrayUnion, writeBatch } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD13MXR0ZQSjPJBxQKYPmsMKjl4yzU2hSs",
@@ -97,6 +97,7 @@ const ticketNumber = (q) => q?.ticketNumber || "ST-001";
 const ticketLabel = (q) => `#${ticketNumber(q)}`;
 const normalizeStatus = (q) => {
   const s = String(q?.ticketStatus || "").trim();
+  if (s === "Merged") return "Merged";
   if (["Open","Pending","On Hold","Solved"].includes(s)) return s;
   if (q?.status === "Completed") return "Solved";
   if (q?.status === "Declined") return "Solved";
@@ -202,6 +203,10 @@ function renderTickets(items){
 function renderMessageRow(msg){
   const isAdmin=msg.sender==='admin';
   const isNote=msg.type==='note';
+  const isMerge=msg.type==='merge';
+  if(isMerge){
+    return `<div class="message-row note merge-record"><div class="message-block"><div class="message-meta"><span class="note-label">Merged Ticket</span><span>${escapeHtml(formatDateLong(msg.createdAt))}</span></div><div class="message-bubble">${escapeHtml(msg.text||'')}</div></div></div>`;
+  }
   if(isNote){
     return `<div class="message-row note"><div class="message-block"><div class="message-meta"><span class="note-label">Internal Note</span><span>${escapeHtml(formatDateLong(msg.createdAt))}</span></div><div class="message-bubble">${escapeHtml(msg.text||'')}</div></div></div>`;
   }
@@ -229,9 +234,13 @@ function openTicket(id){
   conversationEmpty.hidden=true; conversationShell.hidden=false;
   activeTicketNumber.textContent=ticketLabel(q);
   activeTicketSubject.textContent=ticketSubject(q);
-  activeTicketMeta.textContent=`Created ${formatDateLong(q.createdAt||q.created)}`;
+  activeTicketMeta.textContent=q.mergedIntoTicketNumber ? `Merged into ${q.mergedIntoTicketNumber}` : `Created ${formatDateLong(q.createdAt||q.created)}`;
   setActiveTicketBadge(normalizeStatus(q));
   activeTicketStatus.value=normalizeStatus(q);
+  activeTicketStatus.disabled=normalizeStatus(q)==='Merged';
+  adminReply.disabled=normalizeStatus(q)==='Merged';
+  replyAnnotation.disabled=normalizeStatus(q)==='Merged';
+  internalNote.disabled=normalizeStatus(q)==='Merged';
   adminReply.value=''; replyAnnotation.value=''; internalNote.value=''; ticketStatusMessage.textContent='';
   renderConversation(q); renderProfile(q); renderTickets([...quotationMap.values()]);
   if(conversationScroll){suppressScrollAfterOpen=true;conversationScroll.scrollTop=0;}
@@ -247,8 +256,67 @@ function openQuotation(id){
 }
 closeQuoteDetail?.addEventListener('click',()=>{quoteDetail.hidden=true;});
 
+function buildMergeSummary(primary, secondary, mergedAt){
+  const secondaryMessages=Array.isArray(secondary.ticketMessages)?secondary.ticketMessages:[];
+  const customerTexts=secondaryMessages.filter(m=>m?.type!=='note' && m?.sender!=='admin').map(m=>String(m.text||'').trim()).filter(Boolean);
+  const lastCustomer=customerTexts[customerTexts.length-1] || secondary.requirements || 'No customer message was recorded.';
+  const subject=ticketSubject(secondary);
+  return `Ticket ${ticketNumber(secondary)} was merged into ${ticketNumber(primary)} on ${formatDateLong(mergedAt)}.\n\nMerged conversation summary: Customer ${secondary.customerName||'the customer'} contacted STEADFAST regarding “${subject}”. The ticket concern was: ${String(secondary.requirements||lastCustomer).trim()}${lastCustomer && lastCustomer!==secondary.requirements ? ` Latest customer message: ${lastCustomer}` : ''}\n\nOriginal ticket: ${ticketLabel(secondary)}\nOriginal customer email: ${secondary.customerEmail||'Not provided'}`;
+}
+
+async function mergeActiveTicket(){
+  const primary=quotationMap.get(activeTicketId);
+  if(!primary)return;
+  if(normalizeStatus(primary)==='Merged'){ticketStatusMessage.textContent='This ticket is already merged and cannot be merged again.';return;}
+  const entered=window.prompt(`Merge which ticket into ${ticketNumber(primary)}?\n\nEnter the ticket number to merge into this ticket, for example: ST-002`,'');
+  if(entered===null)return;
+  const targetNumber=String(entered||'').trim().replace(/^#/,'').toUpperCase();
+  if(!/^ST-\d{3,}$/.test(targetNumber)){ticketStatusMessage.textContent='Enter a valid ticket number such as ST-002.';activeTicketStatus.value=normalizeStatus(primary);return;}
+  if(targetNumber===ticketNumber(primary).toUpperCase()){ticketStatusMessage.textContent='A ticket cannot be merged into itself.';activeTicketStatus.value=normalizeStatus(primary);return;}
+  const secondary=[...quotationMap.values()].find(q=>ticketNumber(q).toUpperCase()===targetNumber);
+  if(!secondary){ticketStatusMessage.textContent=`Ticket ${targetNumber} was not found.`;activeTicketStatus.value=normalizeStatus(primary);return;}
+  if(normalizeStatus(secondary)==='Merged'){ticketStatusMessage.textContent=`${targetNumber} is already merged and cannot be selected.`;activeTicketStatus.value=normalizeStatus(primary);return;}
+  const confirmed=window.confirm(`Merge ${ticketLabel(secondary)} into ${ticketLabel(primary)}?\n\nThis keeps ${ticketLabel(primary)} as the primary ticket and automatically marks ${ticketLabel(secondary)} as Merged.\n\n${ticketSubject(secondary)}\n${secondary.customerName||'Unknown customer'}\n${secondary.customerEmail||'No email'}\n\n${ticketLabel(secondary)} will automatically be marked Merged.`);
+  if(!confirmed){activeTicketStatus.value=normalizeStatus(primary);return;}
+  try{
+    activeTicketStatus.disabled=true;
+    ticketStatusMessage.textContent='Merging tickets…';
+    const now=new Date();
+    const summary=buildMergeSummary(primary,secondary,now);
+    const secondaryMessages=Array.isArray(secondary.ticketMessages)?secondary.ticketMessages:[];
+    const importedMessages=secondaryMessages.map(msg=>({...msg,mergedFromTicket:ticketNumber(secondary)}));
+    const mergeRecord={sender:'system',type:'merge',name:'STEADFAST',text:summary,createdAt:now,mergedTicketNumber:ticketNumber(secondary),mergedTicketId:secondary.id};
+    const batch=writeBatch(db);
+    batch.update(doc(db,'quotations',primary.id),{
+      ticketMessages:arrayUnion(mergeRecord,...importedMessages),
+      mergedTicketNumbers:arrayUnion(ticketNumber(secondary)),
+      mergedTicketIds:arrayUnion(secondary.id),
+      ticketUpdatedAt:now
+    });
+    batch.update(doc(db,'quotations',secondary.id),{
+      ticketStatus:'Merged',
+      mergedIntoTicketNumber:ticketNumber(primary),
+      mergedIntoTicketId:primary.id,
+      mergedAt:now,
+      mergeSummary:summary,
+      ticketUpdatedAt:now
+    });
+    await batch.commit();
+    activeTicketStatus.value=normalizeStatus(primary);
+    ticketStatusMessage.textContent=`${ticketLabel(secondary)} merged into ${ticketLabel(primary)}.`;
+    activeTicketStatus.disabled=false;
+  }catch(e){
+    console.error('Ticket merge failed:',e);
+    activeTicketStatus.value=normalizeStatus(primary);
+    activeTicketStatus.disabled=false;
+    ticketStatusMessage.textContent='Could not merge the tickets. Please try again.';
+  }
+}
+
 async function setTicketStatus(status){
   if(!activeTicketId)return;
+  if(status==='__merge__'){activeTicketStatus.value=normalizeStatus(quotationMap.get(activeTicketId));await mergeActiveTicket();return;}
+  if(status==='Merged')return;
   try{await updateDoc(doc(db,'quotations',activeTicketId),{ticketStatus:status,ticketUpdatedAt:new Date()});setActiveTicketBadge(status);ticketStatusMessage.textContent=`Status set to ${status}.`;}catch(e){console.error(e);ticketStatusMessage.textContent='Could not update ticket status.';}
 }
 activeTicketStatus?.addEventListener('change',()=>setTicketStatus(activeTicketStatus.value));
@@ -286,7 +354,11 @@ function subscribeToQuotations(){
     const items=snapshot.docs.map(s=>({id:s.id,...s.data()}));
     quotationMap=new Map(items.map(q=>[q.id,q]));
     updateDashboardMetrics(items);renderRecent(items);renderQuotations(items);renderTickets(items);
-    if(activeTicketId&&quotationMap.has(activeTicketId)){const q=quotationMap.get(activeTicketId);activeTicketNumber.textContent=ticketLabel(q);activeTicketSubject.textContent=ticketSubject(q);activeTicketMeta.textContent=`Created ${formatDateLong(q.createdAt||q.created)}`;setActiveTicketBadge(normalizeStatus(q));activeTicketStatus.value=normalizeStatus(q);renderConversation(q);renderProfile(q);}
+    if(activeTicketId&&quotationMap.has(activeTicketId)){const q=quotationMap.get(activeTicketId);activeTicketNumber.textContent=ticketLabel(q);activeTicketSubject.textContent=ticketSubject(q);activeTicketMeta.textContent=q.mergedIntoTicketNumber?`Merged into ${q.mergedIntoTicketNumber}`:`Created ${formatDateLong(q.createdAt||q.created)`};setActiveTicketBadge(normalizeStatus(q));activeTicketStatus.value=normalizeStatus(q);activeTicketStatus.disabled=normalizeStatus(q)==='Merged';adminReply.disabled=normalizeStatus(q)==='Merged';replyAnnotation.disabled=normalizeStatus(q)==='Merged';internalNote.disabled=normalizeStatus(q)==='Merged';renderConversation(q);renderProfile(q);}
+    else if(items.length){
+      const first=sortQuotations(items)[0];
+      if(first)openTicket(first.id);
+    }
     ensureTicketNumbers(items);
   },error=>{console.error('Quotation listener failed:',error);if(quotationRows)quotationRows.innerHTML='<tr><td colspan="7">Could not load quotations. Check Firestore Rules.</td></tr>';if(ticketList)ticketList.innerHTML='<div class="list-empty"><strong>Could not load tickets</strong><span>Check Firestore Rules.</span></div>';});
 }
