@@ -30,3 +30,6 @@ Authorized account currently configured:
 
 Before deployment, replace the Firebase placeholders in `admin/auth.js` and `admin/dashboard.js`, enable Google Authentication in Firebase, and add the deployed domain to Firebase Authentication Authorized Domains.
 
+
+## Gmail quotation automation
+The quotation workflow uses the STEADFAST Gmail Bridge Apps Script. The customer receives an automatic quotation summary and a promotional UP TO 75% OFF offer after a successful quotation submission, while the admin receives a notification at yahhclffjnd@gmail.com. The Apps Script owner must authorize Gmail once by running authorizeAndTest().

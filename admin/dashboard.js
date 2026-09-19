@@ -127,7 +127,7 @@ function openQuotation(id) {
   emailStatus.textContent = "";
   if (emailTo) emailTo.value = q.customerEmail || "";
   if (emailSubject) emailSubject.value = `Regarding your STEADFAST website quotation`;
-  if (emailBody) emailBody.value = `Hello ${q.customerName || 'there'},\n\nThank you for your website quotation request. I have reviewed your requirements and would be happy to discuss the next steps with you.\n\nYour estimated starting point is ${q.estimate || '—'} ${q.currency || ''}.\n\nYour project may qualify for UP TO 50% OFF, subject to final review and eligibility.\n\nPlease let me know if you would like to continue by email or schedule a meeting.\n\nThank you,\nCliff Jandee Medrano\nSTEADFAST`;
+  if (emailBody) emailBody.value = `Hello ${q.customerName || 'there'},\n\nThank you for your website quotation request. I have reviewed your requirements and would be happy to discuss the next steps with you.\n\nYour estimated starting point is ${q.estimate || '—'} ${q.currency || ''}.\n\nYour project may qualify for UP TO 75% OFF, subject to final review and eligibility.\n\nPlease let me know if you would like to continue by email or schedule a meeting.\n\nThank you,\nCliff Jandee Medrano\nSTEADFAST`;
   quoteDetail.scrollIntoView({behavior:"smooth", block:"start"});
 }
 
@@ -202,7 +202,7 @@ clearEmailBtn?.addEventListener('click', () => {
 });
 useQuoteTemplate?.addEventListener('click', () => {
   if (emailSubject) emailSubject.value = 'Regarding your STEADFAST website quotation';
-  if (emailBody) emailBody.value = `Hello there,\n\nThank you for your website quotation request. I have reviewed your requirements and would be happy to discuss the next steps with you.\n\nYour project may qualify for UP TO 50% OFF, subject to final review and eligibility.\n\nPlease let me know if you would like to continue by email or schedule a meeting.\n\nThank you,\nCliff Jandee Medrano\nSTEADFAST`;
+  if (emailBody) emailBody.value = `Hello there,\n\nThank you for your website quotation request. I have reviewed your requirements and would be happy to discuss the next steps with you.\n\nYour project may qualify for UP TO 75% OFF, subject to final review and eligibility.\n\nPlease let me know if you would like to continue by email or schedule a meeting.\n\nThank you,\nCliff Jandee Medrano\nSTEADFAST`;
   if (gmailEmailStatus) gmailEmailStatus.textContent = 'Template loaded.';
 });
 

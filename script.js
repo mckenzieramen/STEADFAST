@@ -303,6 +303,7 @@
           customerName: data.customerName,
           customerEmail: data.customerEmail,
           websiteType: data.service,
+          scope: data.scope,
           estimate: data.estimate,
           currency: data.currency,
           country: data.country,
