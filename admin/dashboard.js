@@ -349,10 +349,7 @@ composerTabs.forEach(tab=>tab.addEventListener('click',()=>{
   composerTabs.forEach(t=>t.classList.toggle('active',t===tab));const noteMode=tab.dataset.composeMode==='note';replyComposer.hidden=noteMode;noteComposer.hidden=!noteMode;ticketStatusMessage.textContent='';
 }));
 
-function setAdminLoading(text, done=false){const loader=document.getElementById('adminLoading');if(loader){loader.classList.add('hidden');loader.style.display='none';loader.setAttribute('aria-hidden','true');} }
-
 function subscribeToQuotations(){
-  setAdminLoading('');
   return onSnapshot(collection(db,'quotations'),snapshot=>{
     const items=snapshot.docs.map(s=>({id:s.id,...s.data()}));
     quotationMap=new Map(items.map(q=>[q.id,q]));
@@ -363,8 +360,7 @@ function subscribeToQuotations(){
       if(first)openTicket(first.id);
     }
     ensureTicketNumbers(items);
-    setAdminLoading('', true);
-  },error=>{console.error('Quotation listener failed:',error);if(quotationRows)quotationRows.innerHTML='<tr><td colspan="7">Could not load quotations. Check Firestore Rules.</td></tr>';if(ticketList)ticketList.innerHTML='<div class="list-empty"><strong>Could not load tickets</strong><span>Check Firestore Rules.</span></div>';setAdminLoading('', true);});
+  },error=>{console.error('Quotation listener failed:',error);if(quotationRows)quotationRows.innerHTML='<tr><td colspan="7">Could not load quotations. Check Firestore Rules.</td></tr>';if(ticketList)ticketList.innerHTML='<div class="list-empty"><strong>Could not load tickets</strong><span>Check Firestore Rules.</span></div>';});
 }
 
 function sendGmail(to,subject,body,statusEl,button){
@@ -404,17 +400,15 @@ let authHandled = false;
 let authFallbackTimer = null;
 
 function finishAdminAuth(user){
-  if(authHandled && !user) return;
-  if(user) authHandled = true;
+  if(authHandled) return;
+  authHandled = true;
   if(authFallbackTimer) clearTimeout(authFallbackTimer);
   if(!user){
-    setAdminLoading('', true);
     window.location.replace('./index.html');
     return;
   }
   const email=(user.email||'').toLowerCase().trim();
   if(!isAuthorized(email)){
-    setAdminLoading('', true);
     signOut(auth).finally(()=>window.location.replace('./index.html'));
     return;
   }
@@ -425,9 +419,6 @@ function finishAdminAuth(user){
     if(user.photoURL){avatar.src=user.photoURL;avatar.alt=displayName;avatar.classList.add('has-photo')}
     else{avatar.src='../assets/steadfast-mark.png';avatar.alt='STEADFAST';avatar.classList.remove('has-photo')}
   }
-  // Authentication is complete. Never keep the full-screen loader over the
-  // workspace while Firestore is connecting; the navigation must remain usable.
-  setAdminLoading('', true);
   if(gmailStatus)gmailStatus.textContent=emailCfg.webAppUrl?'CONNECTED':'SETUP REQUIRED';
   const dashboardGmailStatus=document.getElementById('dashboardGmailStatus');
   if(dashboardGmailStatus)dashboardGmailStatus.textContent=emailCfg.webAppUrl?'Connected':'Setup required';
@@ -436,46 +427,20 @@ function finishAdminAuth(user){
 }
 
 function initAdminAuth(){
-  try{
-    setAdminLoading('');
-
-    // Start the observer first. Waiting on setPersistence before registering the
-    // observer can leave the header stuck on “Authenticating…” on slower browsers.
-    onAuthStateChanged(auth,(user)=>{
-      if(user){
-        finishAdminAuth(user);
-      }else{
-        // Firebase has finished restoring the session and there is no admin user.
-        setAdminLoading('', true);
-        setTimeout(()=>window.location.replace('./index.html'),350);
-      }
-    });
-
-    setPersistence(auth,browserLocalPersistence).catch((error)=>{
-      console.warn('STEADFAST auth persistence could not be enabled:',error);
-    });
-
-    // If Firebase is unusually slow, do not leave the entire page covered forever.
-    // Firestore rules still protect the data; this only prevents a permanent UI lock.
-    setTimeout(()=>{
-      const loader=document.getElementById('adminLoading');
-      if(loader && !loader.classList.contains('hidden')){
-        const current=auth.currentUser;
-        if(current){
-          finishAdminAuth(current);
-        }else{
-          setAdminLoading('', true);
-          if(adminName)adminName.textContent='STEADFAST Admin';
-          if(adminEmail)adminEmail.textContent='Session check pending';
-        }
-      }
-    },3500);
-  }catch(error){
-    console.error('STEADFAST admin auth initialization failed:',error);
-    if(adminName)adminName.textContent='Authentication error';
-    if(adminEmail)adminEmail.textContent='Session check failed';
-    setAdminLoading('', true);
-  }
+  let settled=false;
+  const unsubscribe=onAuthStateChanged(auth,(user)=>{
+    if(settled) return;
+    settled=true;
+    if(user){
+      finishAdminAuth(user);
+    }else{
+      window.location.replace('./index.html');
+    }
+    unsubscribe?.();
+  });
+  // Never block the dashboard UI with an authentication overlay.
+  // Firebase's observer is the source of truth for the protected session.
 }
+
 
 initAdminAuth();
