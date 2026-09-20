@@ -49,3 +49,10 @@ The quotation workflow uses the STEADFAST Gmail Bridge Apps Script. The customer
 - Firebase sign-out is attempted before redirect, with a 3-second safety timeout so the UI cannot remain stuck.
 - Session storage is cleared and the user is redirected to the admin login page with a logged-out marker.
 - Existing V22 authentication, quotations, ticketing, merge, Gmail, and public quote fixes are preserved.
+
+
+## V24 fixes
+- Fixed accidental nested Support Tickets list-panel markup that could break the conversation workspace layout.
+- Moved ticket status / Merge control beside Send Reply in the composer footer.
+- Expanded conversation feed width to use the available center workspace.
+- Hardened Firebase auth observer initialization to avoid a possible callback initialization race that could surface as Dashboard script error.

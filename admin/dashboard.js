@@ -457,8 +457,9 @@ async function initAdminAuth(){
     // Register the observer before deciding that the session is missing.
     // This handles browsers where the persisted user becomes available just
     // after auth initialization.
-    const unsubscribe=onAuthStateChanged(auth,(user)=>{
-      unsubscribe();
+    let authObserver;
+    authObserver=onAuthStateChanged(auth,(user)=>{
+      if(authObserver) authObserver();
       finishAdminAuth(user);
     });
 
