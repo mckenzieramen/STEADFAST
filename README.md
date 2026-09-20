@@ -33,3 +33,11 @@ Before deployment, replace the Firebase placeholders in `admin/auth.js` and `adm
 
 ## Gmail quotation automation
 The quotation workflow uses the STEADFAST Gmail Bridge Apps Script. The customer receives an automatic quotation summary and a promotional UP TO 75% OFF offer after a successful quotation submission, while the admin receives a notification at yahhclffjnd@gmail.com. The Apps Script owner must authorize Gmail once by running authorizeAndTest().
+
+
+## V22 — Admin session initialization fix
+- Reworked the Admin Dashboard Firebase session bootstrap so it explicitly restores browser-local persistence and waits for the initial Firebase auth state before loading quotations.
+- Prevents the header from remaining indefinitely on “Checking account… / Authenticating…”.
+- Added a 15-second authentication watchdog so a blocked/stale Firebase session returns to the Admin sign-in page instead of hanging forever.
+- Added a small runtime error fallback in `admin/dashboard.html` so module/Firebase loading failures are visible instead of looking like an endless authentication state.
+- Preserves the V21 public quotation Gmail-first flow and all previous ticket/dashboard features.

@@ -397,18 +397,25 @@ newTicketBtn?.addEventListener('click',()=>{showSection('quotations');});
 logout?.addEventListener('click',async()=>{logout.disabled=true;logout.textContent='Signing out…';try{await signOut(auth);}finally{window.location.replace('./index.html');}});
 
 let authHandled = false;
-let authFallbackTimer = null;
+let authWatchdog = null;
+
+function showAuthState(name, email){
+  if(adminName) adminName.textContent=name;
+  if(adminEmail) adminEmail.textContent=email;
+}
 
 function finishAdminAuth(user){
   if(authHandled) return;
   authHandled = true;
-  if(authFallbackTimer) clearTimeout(authFallbackTimer);
+  if(authWatchdog) clearTimeout(authWatchdog);
   if(!user){
-    window.location.replace('./index.html');
+    showAuthState('Session expired','Redirecting to sign in…');
+    window.setTimeout(()=>window.location.replace('./index.html'),250);
     return;
   }
   const email=(user.email||'').toLowerCase().trim();
   if(!isAuthorized(email)){
+    showAuthState('Access denied','Unauthorized account');
     signOut(auth).finally(()=>window.location.replace('./index.html'));
     return;
   }
@@ -426,21 +433,42 @@ function finishAdminAuth(user){
   stopQuotationListener=subscribeToQuotations();
 }
 
-function initAdminAuth(){
-  let settled=false;
-  const unsubscribe=onAuthStateChanged(auth,(user)=>{
-    if(settled) return;
-    settled=true;
-    if(user){
-      finishAdminAuth(user);
-    }else{
-      window.location.replace('./index.html');
-    }
-    unsubscribe?.();
-  });
-  // Never block the dashboard UI with an authentication overlay.
-  // Firebase's observer is the source of truth for the protected session.
-}
+async function initAdminAuth(){
+  // Explicitly restore the same browser-local Firebase session used by the
+  // Google sign-in page before starting the protected dashboard listener.
+  try{
+    await setPersistence(auth,browserLocalPersistence);
+  }catch(error){
+    console.warn('STEADFAST auth persistence setup failed:',error);
+  }
 
+  try{
+    // Firebase v10+ exposes authStateReady(); it prevents the dashboard from
+    // racing the initial persisted-session lookup. Older SDKs simply skip it.
+    if(typeof auth.authStateReady==='function') await auth.authStateReady();
+  }catch(error){
+    console.warn('STEADFAST auth state initialization failed:',error);
+  }
+
+  const currentUser=auth.currentUser;
+  if(currentUser){
+    finishAdminAuth(currentUser);
+  }else{
+    // Register the observer before deciding that the session is missing.
+    // This handles browsers where the persisted user becomes available just
+    // after auth initialization.
+    const unsubscribe=onAuthStateChanged(auth,(user)=>{
+      unsubscribe();
+      finishAdminAuth(user);
+    });
+
+    // Never leave the account header stuck on “Authenticating…” forever.
+    authWatchdog=window.setTimeout(()=>{
+      if(authHandled) return;
+      showAuthState('Authentication timeout','Please sign in again');
+      window.setTimeout(()=>window.location.replace('./index.html'),1200);
+    },15000);
+  }
+}
 
 initAdminAuth();
