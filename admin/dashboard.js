@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut, setPersistence, browserLocalPersistence } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { initializeAuth, getAuth, onAuthStateChanged, signOut, browserLocalPersistence, indexedDBLocalPersistence } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { getFirestore, collection, onSnapshot, updateDoc, doc, arrayUnion, writeBatch } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -14,7 +14,14 @@ const firebaseConfig = {
 const AUTHORIZED_EMAILS = ["yahhclffjnd@gmail.com"];
 const isAuthorized = (email) => AUTHORIZED_EMAILS.includes((email || "").toLowerCase().trim());
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+let auth;
+try {
+  auth = initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] });
+} catch (authInitError) {
+  console.warn("STEADFAST Firebase persistent auth initialization failed; using default auth:", authInitError);
+  auth = getAuth(app);
+}
+
 const db = getFirestore(app);
 const emailCfg = window.STEADFAST_EMAIL_CONFIG || {};
 
@@ -395,10 +402,17 @@ refreshTickets?.addEventListener('click',()=>{renderTickets([...quotationMap.val
 newTicketBtn?.addEventListener('click',()=>{showSection('quotations');});
 
 let authHandled = false;
+let authResolved = false;
+let authTimeoutId = null;
 
 function showAuthState(name, email){
   if(adminName) adminName.textContent=name;
   if(adminEmail) adminEmail.textContent=email;
+}
+
+function showAuthFailure(message){
+  if(adminName) adminName.textContent = 'Authentication error';
+  if(adminEmail) adminEmail.textContent = message;
 }
 
 // The HTML page already provides a zero-dependency logout fallback. Keep the
@@ -414,16 +428,18 @@ logoutBtn?.addEventListener('click',(event)=>{
 });
 
 function finishAdminAuth(user){
-  if(authHandled) return;
+  if(authResolved) return;
+  authResolved = true;
+  if(authTimeoutId) window.clearTimeout(authTimeoutId);
   if(!user){
     showAuthState('Session expired','Redirecting to sign in…');
-    window.setTimeout(()=>window.location.replace('./index.html'),250);
+    window.setTimeout(()=>window.location.replace('./index.html?loggedOut=1'),250);
     return;
   }
   const email=(user.email||'').toLowerCase().trim();
   if(!isAuthorized(email)){
     showAuthState('Access denied','Unauthorized account');
-    signOut(auth).finally(()=>window.location.replace('./index.html'));
+    signOut(auth).finally(()=>window.location.replace('./index.html?loggedOut=1'));
     return;
   }
   authHandled=true;
@@ -440,11 +456,20 @@ function finishAdminAuth(user){
   stopQuotationListener=subscribeToQuotations();
 }
 
-// Register the observer immediately. This avoids the V24 race where the
-// dashboard could inspect currentUser too early and remain on the loading UI.
+// Firebase Auth can take a moment to restore IndexedDB/local persistence on a
+// fresh Cloudflare page load. Give it a bounded window, but never leave the
+// administrator staring at “Authenticating…” forever.
 try{
-  onAuthStateChanged(auth,(user)=>finishAdminAuth(user));
+  const unsubscribeAuth = onAuthStateChanged(auth,(user)=>finishAdminAuth(user));
+  authTimeoutId = window.setTimeout(()=>{
+    if(authResolved) return;
+    console.error('STEADFAST Firebase Auth restore timed out.');
+    try { unsubscribeAuth(); } catch(e) {}
+    showAuthFailure('Firebase session could not be restored. Redirecting…');
+    window.setTimeout(()=>window.location.replace('./index.html?loggedOut=1'),800);
+  },8000);
 }catch(error){
   console.error('STEADFAST auth listener failed:',error);
-  showAuthState('Authentication error','Please return to Admin Login');
+  showAuthFailure('Firebase Auth failed to initialize. Redirecting…');
+  window.setTimeout(()=>window.location.replace('./index.html?loggedOut=1'),800);
 }

@@ -1,3 +1,11 @@
+
+## V26 — Firebase Admin Auth Restore Fix
+- Replaced dashboard auth bootstrap with explicit Firebase `initializeAuth` persistence using IndexedDB/local browser persistence.
+- Prevents the admin header from staying indefinitely on “Checking account / Authenticating…”.
+- Added an 8-second bounded auth-restore timeout with automatic return to Admin Login if Firebase cannot restore a session.
+- Admin login uses the same persistent-auth initialization so the session survives navigation to the dashboard.
+- Preserved V25 support-ticket layout, conversation width, status/merge controls, quote flow, and one-click logout behavior.
+
 # STEADFAST — by Cliff Jandee Medrano
 
 Premium portfolio/service website focused on **Web Solutions**, with separate **Admin Support** and **Customer Service** service routes.

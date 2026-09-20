@@ -1,12 +1,13 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import {
+  initializeAuth,
   getAuth,
   GoogleAuthProvider,
   signInWithPopup,
   onAuthStateChanged,
   signOut,
-  setPersistence,
-  browserLocalPersistence
+  browserLocalPersistence,
+  indexedDBLocalPersistence
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
 const firebaseConfig = {
@@ -38,10 +39,14 @@ function isAuthorized(email) {
 }
 
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-setPersistence(auth, browserLocalPersistence).catch((error) => {
-  console.warn("STEADFAST auth persistence could not be enabled:", error);
-});
+let auth;
+try {
+  auth = initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] });
+} catch (error) {
+  console.warn("STEADFAST persistent auth initialization failed; using default auth:", error);
+  auth = getAuth(app);
+}
+
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: "select_account" });
 
