@@ -73,3 +73,7 @@ The quotation workflow uses the STEADFAST Gmail Bridge Apps Script. The customer
 - Removed the duplicate Firebase logout module and the V24 auth race.
 - Dashboard auth now listens immediately with Firebase onAuthStateChanged and only starts Firestore after the authorized admin is confirmed.
 - Logout is available as a non-blocking redirect fallback; the login page consumes the loggedOut flag and clears the Firebase session.
+
+
+## V27 Admin Auth Fix
+The admin dashboard now uses Firebase `getAuth(app)` to attach to the existing persisted login session instead of calling `initializeAuth()` again. This prevents the dashboard from getting stuck on Checking account / Authenticating after a successful Google login.

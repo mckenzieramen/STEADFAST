@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { initializeAuth, getAuth, onAuthStateChanged, signOut, browserLocalPersistence, indexedDBLocalPersistence } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { getFirestore, collection, onSnapshot, updateDoc, doc, arrayUnion, writeBatch } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -14,14 +14,13 @@ const firebaseConfig = {
 const AUTHORIZED_EMAILS = ["yahhclffjnd@gmail.com"];
 const isAuthorized = (email) => AUTHORIZED_EMAILS.includes((email || "").toLowerCase().trim());
 const app = initializeApp(firebaseConfig);
-let auth;
-try {
-  auth = initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] });
-} catch (authInitError) {
-  console.warn("STEADFAST Firebase persistent auth initialization failed; using default auth:", authInitError);
-  auth = getAuth(app);
-}
-
+// IMPORTANT: the login page owns Firebase Auth initialization/persistence.
+// The dashboard must attach to that same default Auth instance instead of
+// calling initializeAuth() a second time. This avoids the Cloudflare/Chrome
+// dashboard getting stuck on "Authenticating…" while the login session is
+// already valid. Firebase Auth's default persistence is local in supported
+// browsers, so getAuth() is the safest shared-session path here.
+const auth = getAuth(app);
 const db = getFirestore(app);
 const emailCfg = window.STEADFAST_EMAIL_CONFIG || {};
 
@@ -456,20 +455,24 @@ function finishAdminAuth(user){
   stopQuotationListener=subscribeToQuotations();
 }
 
-// Firebase Auth can take a moment to restore IndexedDB/local persistence on a
-// fresh Cloudflare page load. Give it a bounded window, but never leave the
-// administrator staring at “Authenticating…” forever.
+// Attach to the existing Firebase Auth session. Do not initialize Auth a second
+// time on this page. The listener is registered immediately so a valid Google
+// session can open the dashboard and start Firestore without an auth deadlock.
 try{
-  const unsubscribeAuth = onAuthStateChanged(auth,(user)=>finishAdminAuth(user));
+  const unsubscribeAuth = onAuthStateChanged(auth,(user)=>finishAdminAuth(user),(error)=>{
+    console.error('STEADFAST Firebase Auth state error:',error);
+    showAuthFailure(`Firebase Auth error: ${error?.code || error?.message || 'unknown error'}`);
+    if(authTimeoutId) window.clearTimeout(authTimeoutId);
+  });
   authTimeoutId = window.setTimeout(()=>{
     if(authResolved) return;
-    console.error('STEADFAST Firebase Auth restore timed out.');
+    console.error('STEADFAST Firebase Auth restore timed out. currentUser=',auth.currentUser);
     try { unsubscribeAuth(); } catch(e) {}
-    showAuthFailure('Firebase session could not be restored. Redirecting…');
-    window.setTimeout(()=>window.location.replace('./index.html?loggedOut=1'),800);
-  },8000);
+    showAuthFailure('Firebase session could not be restored. Please sign in again.');
+    window.setTimeout(()=>window.location.replace('./index.html?loggedOut=1'),1500);
+  },12000);
 }catch(error){
   console.error('STEADFAST auth listener failed:',error);
-  showAuthFailure('Firebase Auth failed to initialize. Redirecting…');
-  window.setTimeout(()=>window.location.replace('./index.html?loggedOut=1'),800);
+  showAuthFailure(`Firebase Auth failed: ${error?.code || error?.message || 'unknown error'}`);
+  window.setTimeout(()=>window.location.replace('./index.html?loggedOut=1'),1500);
 }
