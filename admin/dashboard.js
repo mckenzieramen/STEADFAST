@@ -394,20 +394,27 @@ sortTicketsBtn?.addEventListener('click',()=>{ticketSort=ticketSort==='desc'?'as
 refreshTickets?.addEventListener('click',()=>{renderTickets([...quotationMap.values()]);if(activeTicketId&&quotationMap.has(activeTicketId))openTicket(activeTicketId);});
 newTicketBtn?.addEventListener('click',()=>{showSection('quotations');});
 
-logout?.addEventListener('click',(event)=>{ if(typeof window.steadfastLogout==='function'){ event.preventDefault(); window.steadfastLogout(); } });
-
 let authHandled = false;
-let authWatchdog = null;
 
 function showAuthState(name, email){
   if(adminName) adminName.textContent=name;
   if(adminEmail) adminEmail.textContent=email;
 }
 
+// The HTML page already provides a zero-dependency logout fallback. Keep the
+// same handler here so logout remains available after this module loads.
+window.steadfastLogout = window.steadfastLogout || function(){
+  try{sessionStorage.clear();}catch(e){}
+  window.location.replace('./index.html?loggedOut=1');
+  return false;
+};
+logoutBtn?.addEventListener('click',(event)=>{
+  event.preventDefault();
+  window.steadfastLogout();
+});
+
 function finishAdminAuth(user){
   if(authHandled) return;
-  authHandled = true;
-  if(authWatchdog) clearTimeout(authWatchdog);
   if(!user){
     showAuthState('Session expired','Redirecting to sign in…');
     window.setTimeout(()=>window.location.replace('./index.html'),250);
@@ -419,9 +426,9 @@ function finishAdminAuth(user){
     signOut(auth).finally(()=>window.location.replace('./index.html'));
     return;
   }
+  authHandled=true;
   const displayName=user.displayName||'Cliff Jandee';
-  if(adminName)adminName.textContent=displayName;
-  if(adminEmail)adminEmail.textContent=email;
+  showAuthState(displayName,email);
   if(avatar){
     if(user.photoURL){avatar.src=user.photoURL;avatar.alt=displayName;avatar.classList.add('has-photo')}
     else{avatar.src='../assets/steadfast-mark.png';avatar.alt='STEADFAST';avatar.classList.remove('has-photo')}
@@ -433,43 +440,11 @@ function finishAdminAuth(user){
   stopQuotationListener=subscribeToQuotations();
 }
 
-async function initAdminAuth(){
-  // Explicitly restore the same browser-local Firebase session used by the
-  // Google sign-in page before starting the protected dashboard listener.
-  try{
-    await setPersistence(auth,browserLocalPersistence);
-  }catch(error){
-    console.warn('STEADFAST auth persistence setup failed:',error);
-  }
-
-  try{
-    // Firebase v10+ exposes authStateReady(); it prevents the dashboard from
-    // racing the initial persisted-session lookup. Older SDKs simply skip it.
-    if(typeof auth.authStateReady==='function') await auth.authStateReady();
-  }catch(error){
-    console.warn('STEADFAST auth state initialization failed:',error);
-  }
-
-  const currentUser=auth.currentUser;
-  if(currentUser){
-    finishAdminAuth(currentUser);
-  }else{
-    // Register the observer before deciding that the session is missing.
-    // This handles browsers where the persisted user becomes available just
-    // after auth initialization.
-    let authObserver;
-    authObserver=onAuthStateChanged(auth,(user)=>{
-      if(authObserver) authObserver();
-      finishAdminAuth(user);
-    });
-
-    // Never leave the account header stuck on “Authenticating…” forever.
-    authWatchdog=window.setTimeout(()=>{
-      if(authHandled) return;
-      showAuthState('Authentication timeout','Please sign in again');
-      window.setTimeout(()=>window.location.replace('./index.html'),1200);
-    },15000);
-  }
+// Register the observer immediately. This avoids the V24 race where the
+// dashboard could inspect currentUser too early and remain on the loading UI.
+try{
+  onAuthStateChanged(auth,(user)=>finishAdminAuth(user));
+}catch(error){
+  console.error('STEADFAST auth listener failed:',error);
+  showAuthState('Authentication error','Please return to Admin Login');
 }
-
-initAdminAuth();

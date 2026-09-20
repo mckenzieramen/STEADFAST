@@ -45,7 +45,17 @@ setPersistence(auth, browserLocalPersistence).catch((error) => {
 const provider = new GoogleAuthProvider();
 provider.setCustomParameters({ prompt: "select_account" });
 
+const forcedLogout = new URLSearchParams(window.location.search).get("loggedOut") === "1";
+if (forcedLogout) {
+  signOut(auth).finally(() => {
+    const clean = `${window.location.pathname}${window.location.hash || ""}`;
+    window.history.replaceState({}, document.title, clean);
+    setMessage("You have been signed out.", "success");
+  });
+}
+
 onAuthStateChanged(auth, async (user) => {
+  if (forcedLogout) return;
   if (!user) return;
   const email = (user.email || "").toLowerCase().trim();
   if (!isAuthorized(email)) {

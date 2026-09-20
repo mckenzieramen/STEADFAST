@@ -56,3 +56,12 @@ The quotation workflow uses the STEADFAST Gmail Bridge Apps Script. The customer
 - Moved ticket status / Merge control beside Send Reply in the composer footer.
 - Expanded conversation feed width to use the available center workspace.
 - Hardened Firebase auth observer initialization to avoid a possible callback initialization race that could surface as Dashboard script error.
+
+
+## V25 Fixes
+- Support workspace gives more horizontal space to the conversation panel by narrowing the ticket rail and profile rail.
+- Conversation feed uses the full available conversation width instead of a centered 900px cap.
+- Open/status control remains beside Send Reply.
+- Removed the duplicate Firebase logout module and the V24 auth race.
+- Dashboard auth now listens immediately with Firebase onAuthStateChanged and only starts Firestore after the authorized admin is confirmed.
+- Logout is available as a non-blocking redirect fallback; the login page consumes the loggedOut flag and clears the Firebase session.
