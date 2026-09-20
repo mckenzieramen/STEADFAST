@@ -394,7 +394,7 @@ sortTicketsBtn?.addEventListener('click',()=>{ticketSort=ticketSort==='desc'?'as
 refreshTickets?.addEventListener('click',()=>{renderTickets([...quotationMap.values()]);if(activeTicketId&&quotationMap.has(activeTicketId))openTicket(activeTicketId);});
 newTicketBtn?.addEventListener('click',()=>{showSection('quotations');});
 
-logout?.addEventListener('click',async()=>{logout.disabled=true;logout.textContent='Signing out…';try{await signOut(auth);}finally{window.location.replace('./index.html');}});
+logout?.addEventListener('click',(event)=>{ if(typeof window.steadfastLogout==='function'){ event.preventDefault(); window.steadfastLogout(); } });
 
 let authHandled = false;
 let authWatchdog = null;

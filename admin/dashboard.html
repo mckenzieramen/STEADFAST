@@ -55,7 +55,7 @@
       <div class="side-bottom">
         <div class="side-note"><span class="side-note-icon"><svg viewBox="0 0 24 24"><path d="M12 21a9 9 0 1 0-9-9 9 9 0 0 0 9 9Zm0-13v5m0 3h.01"/></svg></span><div><strong>Good support</strong><small>builds great relationships.</small></div></div>
         <a href="../index.html" class="side-link"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12h18M13 6l6 6-6 6"/></svg></span>View Website</a>
-        <button id="logoutBtn" class="side-link danger"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 5H5v14h5M15 8l4 4-4 4M8 12h11"/></svg></span>Sign out</button>
+        <button id="logoutBtn" type="button" class="side-link danger" onclick="return window.steadfastLogout();"><span class="nav-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M10 5H5v14h5M15 8l4 4-4 4M8 12h11"/></svg></span>Sign out</button>
       </div>
     </aside>
 
@@ -183,6 +183,47 @@
     }
   });
   </script>
-  <script src="../email-config.js"></script><script type="module" src="./dashboard.js?v=22"></script>
+  <script src="../email-config.js"></script>
+  <script type="module" src="./dashboard.js?v=23"></script>
+  <script type="module">
+    import { getApp, getApps, initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
+    import { getAuth, signOut } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+
+    const config = {
+      apiKey: "AIzaSyD13MXR0ZQSjPJBxQKYPmsMKjl4yzU2hSs",
+      authDomain: "steadfast-1d0e6.firebaseapp.com",
+      projectId: "steadfast-1d0e6",
+      storageBucket: "steadfast-1d0e6.firebasestorage.app",
+      messagingSenderId: "488385339804",
+      appId: "1:488385339804:web:0d2bcf3967a8f95ccfe859"
+    };
+
+    const app = getApps().length ? getApp() : initializeApp(config);
+    const auth = getAuth(app);
+
+    window.steadfastLogout = async function () {
+      const btn = document.getElementById("logoutBtn");
+      if (btn) {
+        btn.disabled = true;
+        btn.setAttribute("aria-busy", "true");
+        btn.innerHTML = '<span class="nav-icon" aria-hidden="true">↪</span>Signing out…';
+      }
+
+      // Redirect even if Firebase takes too long. The auth state is cleared
+      // first whenever Firebase is available, with no confirmation prompt.
+      try {
+        await Promise.race([
+          signOut(auth),
+          new Promise(resolve => setTimeout(resolve, 3000))
+        ]);
+      } catch (error) {
+        console.error("STEADFAST logout failed:", error);
+      } finally {
+        try { sessionStorage.clear(); } catch (_) {}
+        window.location.replace("./index.html?loggedOut=1");
+      }
+      return false;
+    };
+  </script>
 </body>
 </html>

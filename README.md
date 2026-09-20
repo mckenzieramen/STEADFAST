@@ -41,3 +41,11 @@ The quotation workflow uses the STEADFAST Gmail Bridge Apps Script. The customer
 - Added a 15-second authentication watchdog so a blocked/stale Firebase session returns to the Admin sign-in page instead of hanging forever.
 - Added a small runtime error fallback in `admin/dashboard.html` so module/Firebase loading failures are visible instead of looking like an endless authentication state.
 - Preserves the V21 public quotation Gmail-first flow and all previous ticket/dashboard features.
+
+
+## V23 — Admin Logout Fix
+- Sign out now has an independent Firebase logout handler in the dashboard HTML.
+- Clicking Sign out immediately starts logout with no confirmation.
+- Firebase sign-out is attempted before redirect, with a 3-second safety timeout so the UI cannot remain stuck.
+- Session storage is cleared and the user is redirected to the admin login page with a logged-out marker.
+- Existing V22 authentication, quotations, ticketing, merge, Gmail, and public quote fixes are preserved.
