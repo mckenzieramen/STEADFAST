@@ -387,9 +387,18 @@ const sections=[...document.querySelectorAll('.section')];
 const navItems=[...document.querySelectorAll('.nav-item')];
 const title=document.getElementById('pageTitle');
 const sidebar=document.getElementById('sidebar');
-function showSection(id){sections.forEach(s=>s.classList.toggle('active',s.id===id));navItems.forEach(i=>i.classList.toggle('active',i.dataset.section===id));const active=navItems.find(i=>i.dataset.section===id);if(title)title.textContent=active?active.textContent.trim():'Dashboard';sidebar?.classList.remove('open');if(id!=='support')window.scrollTo({top:0,behavior:'smooth'});}
+function showSection(id){sections.forEach(s=>s.classList.toggle('active',s.id===id));navItems.forEach(i=>i.classList.toggle('active',i.dataset.section===id && !i.dataset.commerceTarget));const active=navItems.find(i=>i.dataset.section===id && !i.dataset.commerceTarget);if(title)title.textContent=active?active.textContent.trim():'Dashboard';sidebar?.classList.remove('open');if(id!=='support')window.scrollTo({top:0,behavior:'smooth'});}
 navItems.forEach(item=>item.addEventListener('click',()=>showSection(item.dataset.section)));
 document.querySelectorAll('[data-section-link]').forEach(btn=>btn.addEventListener('click',()=>showSection(btn.dataset.sectionLink)));
+window.goAdminCommerce=window.goAdminCommerce||function(tab){
+  showSection('commerce');
+  const tabBtn=document.querySelector(`.commerce-tab[data-commerce-tab="${tab}"]`);
+  if(tabBtn) tabBtn.click();
+  document.querySelectorAll('.nav-item[data-commerce-target]').forEach(i=>i.classList.toggle('active',i.dataset.commerceTarget===tab));
+  if(title) title.textContent=tab==='projects'?'Projects':'Orders';
+  return false;
+};
+
 document.getElementById('mobileMenu')?.addEventListener('click',()=>sidebar?.classList.toggle('open'));
 
 function applyTicketFilter(filter){ticketFilter=filter;ticketFilters.forEach(btn=>btn.classList.toggle('active',btn.dataset.ticketFilter===filter));renderTickets([...quotationMap.values()]);}
