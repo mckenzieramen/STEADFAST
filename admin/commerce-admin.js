@@ -38,7 +38,7 @@ async function saveProduct(e){
     for(const file of files.slice(0,8)) uploaded.push(await uploadImage(file,"store/previews"));
     const previewImages=[...existing,...uploaded].filter(Boolean).slice(0,8);
     const rawCode=val("productAccessCode");
-    const data={name:val("productName"),description:val("productDescription"),price:Number(val("productPrice")||0),currency:val("productCurrency")||"USD",stock:Math.max(0,Number(val("productStock")||0)),paymentMethod:val("productPaymentMethod")||"Manual verification",previewUrl:val("productPreviewUrl"),previewImages,paymentUrl:val("productPaymentUrl"),mariBankLink:val("productMariBankLink"),unlockUrl:val("productUnlockUrl"),accessUsername:val("productAccessUsername"),accessPassword:val("productAccessPassword"),active:$("productActive")?.checked!==false,updatedAt:serverTimestamp()};
+    const data={name:val("productName"),description:val("productDescription"),price:Number(val("productPrice")||0),currency:val("productCurrency")||"USD",stock:Math.max(0,Number(val("productStock")||0)),paymentMethod:val("productPaymentMethod")||"Manual verification",previewUrl:val("productPreviewUrl"),previewImages,paymentUrl:val("productPaymentUrl"),mariBankLink:"",unlockUrl:val("productUnlockUrl"),accessUsername:val("productAccessUsername"),accessPassword:val("productAccessPassword"),active:$("productActive")?.checked!==false,updatedAt:serverTimestamp()};
     if(rawCode) data.accessCodeHash=await hashCode(rawCode);
     if(id) await updateDoc(doc(db,"storeProducts",id),data); else await addDoc(collection(db,"storeProducts"),{...data,createdAt:serverTimestamp()});
     setMsg("Saved ✓");clearProduct();loadProducts();
