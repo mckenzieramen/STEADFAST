@@ -1,0 +1,20 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function admin() {
+      return request.auth != null
+        && request.auth.token.email == 'yahhclffjnd@gmail.com';
+    }
+    match /portfolio/{allPaths=**} {
+      allow read: if true;
+      allow write: if admin();
+    }
+    match /store/{allPaths=**} {
+      allow read: if true;
+      allow write: if admin();
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

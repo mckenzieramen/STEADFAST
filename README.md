@@ -77,3 +77,15 @@ The quotation workflow uses the STEADFAST Gmail Bridge Apps Script. The customer
 
 ## V27 Admin Auth Fix
 The admin dashboard now uses Firebase `getAuth(app)` to attach to the existing persisted login session instead of calling `initializeAuth()` again. This prevents the dashboard from getting stuck on Checking account / Authenticating after a successful Google login.
+
+
+## V27 — Live Works + STEADFAST Store
+- Added a dynamic **Works · Live Preview** section on the homepage.
+- McKenzie Ramen House remains the featured live project, with preview, objective, and Visit link.
+- Admin now has **Works & Store** for publishing/editing projects and digital products through Firebase.
+- Digital products support fixed price, currency, stock, preview URL/image, payment URL, and unlock/delivery URL.
+- Public checkout creates a pending order, displays the fixed amount/payment method, and routes through `pay.html`.
+- `unlock.html` automatically reveals the product link after the admin marks the order **Paid**.
+- Marking an order Paid decrements the product stock by one.
+- Added Firebase `firestore.rules` and `storage.rules` for the new collections/storage paths.
+- Payment provider secrets are intentionally kept out of the browser; the configured Payment URL is the provider checkout link.
