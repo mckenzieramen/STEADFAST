@@ -247,3 +247,14 @@ body.page-leaving{opacity:0;pointer-events:none}
 
 .sf-checkout-page{min-height:100vh;background:radial-gradient(circle at 75% 15%,#8b45ff1f,transparent 25%),#08090d;color:#fff;padding:34px 20px}.sf-checkout-wrap{width:min(760px,100%);margin:auto}.sf-checkout-brand{margin-bottom:30px}.sf-checkout-brand .brand-mark{width:40px;height:40px}.sf-payment-shell{display:grid}.sf-payment-card{background:#fff;color:#17151d;border-radius:24px;padding:42px;box-shadow:0 30px 90px #0006}.sf-payment-card h1{font:800 clamp(32px,5vw,52px)/1 Manrope;letter-spacing:-2px;margin:12px 0}.sf-payment-card p{color:#6b6d78;line-height:1.7}.sf-payment-method{display:flex;justify-content:space-between;gap:20px;padding:15px 0;border-bottom:1px solid #e9e5ee;border-top:1px solid #e9e5ee;margin:15px 0 20px;font-size:12px}.sf-payment-card small{display:block;text-align:center;color:#898493;font-size:10px;margin-top:14px}.sf-payment-card .btn{justify-content:center;margin-top:10px}.sf-payment-card .sf-success-icon{margin:0 0 14px}.sf-payment-card .sf-empty-store{margin:18px 0}
 @media(max-width:600px){.sf-payment-card{padding:25px}.sf-checkout-page{padding:20px}}
+
+/* Temporary quotation availability state */
+.quote-unavailable{position:relative}
+.quote-unavailable-banner{position:absolute;inset:0;z-index:20;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;padding:30px;background:rgba(8,9,13,.84);backdrop-filter:blur(5px);color:#fff;pointer-events:auto}
+.quote-unavailable-banner strong{font:800 16px Manrope;letter-spacing:1.5px}
+.quote-unavailable-banner>span:last-child{max-width:520px;color:#c8c6d0;font-size:12px;line-height:1.6}
+.quote-unavailable-dot{width:10px;height:10px;border-radius:50%;background:#8d8b95;box-shadow:0 0 0 6px #ffffff0d}
+.quote-unavailable .quote-builder{filter:grayscale(.25);opacity:.72}
+.quote-nav-unavailable{display:inline-flex!important;align-items:center;gap:6px}
+.quote-nav-unavailable span{font-size:7px;letter-spacing:.7px;padding:3px 6px;border:1px solid #ffffff24;border-radius:999px;color:#aaa8b3}
+.quote-nav-unavailable:after{display:none!important}

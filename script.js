@@ -189,6 +189,12 @@
   // ---------- Website quotation with IP-based currency ----------
   const quoteForm = $('#quoteForm');
   if (quoteForm) {
+    // Quotation requests are temporarily unavailable. Keep the existing builder
+    // intact for future reactivation, but prevent any submission or API calls.
+    quoteForm.querySelectorAll('input, select, textarea, button').forEach(el => { el.disabled = true; });
+    quoteForm.setAttribute('aria-disabled', 'true');
+    quoteForm.closest('#quote')?.setAttribute('data-quote-status', 'not-available');
+    return;
     const base = {
       'Landing Page': 180,
       'Business Website': 350,
