@@ -10,7 +10,7 @@ service firebase.storage {
       allow write: if admin();
     }
     match /store/receipts/{allPaths=**} {
-      allow read: if true;
+      allow read: if admin();
       allow write: if request.resource.size < 5 * 1024 * 1024
         && (request.resource.contentType.matches('image/.*') || request.resource.contentType == 'application/pdf');
     }

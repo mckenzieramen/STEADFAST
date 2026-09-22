@@ -21,6 +21,12 @@ async function uploadImage(file,path){
 }
 function val(id){return ($(id)?.value||"").trim();}
 
+async function hashCode(value){
+  const data=new TextEncoder().encode(value);
+  const hash=await crypto.subtle.digest("SHA-256",data);
+  return Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,"0")).join("");
+}
+
 async function saveProduct(e){
   e.preventDefault();
   if(!auth.currentUser || !authorized(auth.currentUser))return;
@@ -29,20 +35,22 @@ async function saveProduct(e){
   let image=val("productPreviewImage");
   try{
     if(file)image=await uploadImage(file,"store/previews");
+    const rawCode=val("productAccessCode");
     const data={name:val("productName"),description:val("productDescription"),price:Number(val("productPrice")||0),currency:val("productCurrency")||"USD",stock:Math.max(0,Number(val("productStock")||0)),paymentMethod:val("productPaymentMethod")||"Payment Link",previewUrl:val("productPreviewUrl"),previewImage:image,paymentUrl:val("productPaymentUrl"),mariBankLink:val("productMariBankLink"),unlockUrl:val("productUnlockUrl"),active:$("productActive")?.checked!==false,updatedAt:serverTimestamp()};
+    if(rawCode) data.accessCodeHash=await hashCode(rawCode);
     if(id) await updateDoc(doc(db,"storeProducts",id),data); else await addDoc(collection(db,"storeProducts"),{...data,createdAt:serverTimestamp()});
     setMsg("Saved ✓");clearProduct();loadProducts();
   }catch(err){console.error(err);alert("Could not save product: "+(err.message||err));}
 }
 function clearProduct(){
-  ["productId","productName","productDescription","productPrice","productPreviewUrl","productPreviewImage","productPaymentUrl","productMariBankLink","productUnlockUrl"].forEach(id=>{if($(id))$(id).value=""});
+  ["productId","productName","productDescription","productPrice","productPreviewUrl","productPreviewImage","productPaymentUrl","productMariBankLink","productUnlockUrl","productAccessCode"].forEach(id=>{if($(id))$(id).value=""});
   if($("productStock"))$("productStock").value="1";
   if($("productPaymentMethod"))$("productPaymentMethod").value="Payment Link";
   if($("productActive"))$("productActive").checked=true;
   if($("productFormTitle"))$("productFormTitle").textContent="Create product";
 }
 function editProduct(p){
-  $("productId").value=p.id;$("productName").value=p.name||"";$("productDescription").value=p.description||"";$("productPrice").value=p.price??"";$("productCurrency").value=p.currency||"USD";$("productStock").value=p.stock??0;$("productPaymentMethod").value=p.paymentMethod||"Payment Link";$("productPreviewUrl").value=p.previewUrl||"";$("productPreviewImage").value=p.previewImage||"";$("productPaymentUrl").value=p.paymentUrl||"";$("productMariBankLink").value=p.mariBankLink||"";$("productUnlockUrl").value=p.unlockUrl||"";$("productActive").checked=p.active!==false;$("productFormTitle").textContent="Edit product";window.goAdminSection?.("commerce");}
+  $("productId").value=p.id;$("productName").value=p.name||"";$("productDescription").value=p.description||"";$("productPrice").value=p.price??"";$("productCurrency").value=p.currency||"USD";$("productStock").value=p.stock??0;$("productPaymentMethod").value=p.paymentMethod||"Payment Link";$("productPreviewUrl").value=p.previewUrl||"";$("productPreviewImage").value=p.previewImage||"";$("productPaymentUrl").value=p.paymentUrl||"";$("productMariBankLink").value=p.mariBankLink||"";$("productUnlockUrl").value=p.unlockUrl||"";$("productAccessCode").value="";$("productActive").checked=p.active!==false;$("productFormTitle").textContent="Edit product";window.goAdminSection?.("commerce");}
 async function loadProducts(){
   if(!auth.currentUser)return;
   onSnapshot(query(collection(db,"storeProducts"),orderBy("createdAt","desc")),snap=>{
@@ -77,7 +85,7 @@ function loadOrders(){
     rows.innerHTML=snap.docs.map(d=>{const o=d.data();const date=o.createdAt?.toDate?o.createdAt.toDate().toLocaleString():"—";return `<tr><td><code>${d.id.slice(0,10)}</code></td><td>${escapeHtml(o.customerName||"—")}<br><small>${escapeHtml(o.customerEmail||"")}</small></td><td>${escapeHtml(o.productName||"—")}</td><td>${escapeHtml(o.currency||"USD")} ${Number(o.amount||0).toFixed(2)}</td><td><select class="order-status-select" data-order-status="${d.id}"><option value="pending" ${o.status==="pending"?"selected":""}>Pending</option><option value="verifying" ${o.status==="verifying"?"selected":""}>Verifying</option><option value="paid" ${o.status==="paid"?"selected":""}>Paid / Unlocked</option><option value="failed" ${o.status==="failed"?"selected":""}>Failed</option><option value="cancelled" ${o.status==="cancelled"?"selected":""}>Cancelled</option></select></td><td>${o.receiptUrl?`<a href="${escapeHtml(o.receiptUrl)}" target="_blank" rel="noopener">View proof</a>`:"—"}<br><small>${escapeHtml(date)}</small></td><td><button class="text-btn" data-open-order="${d.id}">Open</button></td></tr>`}).join("");
   });
 }
-async function updateOrderStatus(id,status){const orderRef=doc(db,"storeOrders",id);const before=await getDoc(orderRef);const prev=before.data()||{};await updateDoc(orderRef,{status,updatedAt:serverTimestamp()});const u=doc(db,"storeUnlocks",id);const snap=await getDoc(u);if(snap.exists())await updateDoc(u,{status,updatedAt:serverTimestamp()});if(status==="paid"&&prev.status!=="paid"&&prev.productId){const pRef=doc(db,"storeProducts",prev.productId);await runTransaction(db,async tx=>{const ps=await tx.get(pRef);if(!ps.exists())return;const current=Math.max(0,Number(ps.data().stock||0));tx.update(pRef,{stock:Math.max(0,current-1),updatedAt:serverTimestamp()});});sendPaymentEmail({action:"paymentVerified",customerEmail:prev.customerEmail,customerName:prev.customerName,productName:prev.productName,amount:prev.amount,currency:prev.currency,orderId:id,unlockUrl:prev.unlockUrl||""});}}
+async function updateOrderStatus(id,status){const orderRef=doc(db,"storeOrders",id);const before=await getDoc(orderRef);const prev=before.data()||{};await updateDoc(orderRef,{status,updatedAt:serverTimestamp()});if(status==="paid"&&prev.status!=="paid"&&prev.productId){const pRef=doc(db,"storeProducts",prev.productId);await runTransaction(db,async tx=>{const ps=await tx.get(pRef);if(!ps.exists())return;const current=Math.max(0,Number(ps.data().stock||0));tx.update(pRef,{stock:Math.max(0,current-1),updatedAt:serverTimestamp()});});sendPaymentEmail({action:"paymentVerified",customerEmail:prev.customerEmail,customerName:prev.customerName,productName:prev.productName,amount:prev.amount,currency:prev.currency,orderId:id,unlockUrl:prev.unlockUrl||""});} else if(status==="failed"&&prev.status!=="failed"){sendPaymentEmail({action:"paymentFailed",customerEmail:prev.customerEmail,customerName:prev.customerName,productName:prev.productName,amount:prev.amount,currency:prev.currency,orderId:id});}}
 
 async function sendPaymentEmail(data){
   const cfg=window.STEADFAST_EMAIL_CONFIG||{};

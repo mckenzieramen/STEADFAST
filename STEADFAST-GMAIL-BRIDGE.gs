@@ -35,6 +35,7 @@ function doPost(e) {
     if (action === 'sendEmail') return sendAdminEmail_(p);
     if (action === 'paymentSubmitted') return sendPaymentSubmittedEmail_(p);
     if (action === 'paymentVerified') return sendPaymentVerifiedEmail_(p);
+    if (action === 'paymentFailed') return sendPaymentFailedEmail_(p);
     if (action === 'health') return json_({ ok: true, service: 'STEADFAST Gmail Bridge', status: 'ready' });
 
     return json_({ ok: false, error: 'Unknown action.' });
@@ -200,6 +201,21 @@ function sendPaymentVerifiedEmail_(p) {
   const html = buildPaymentVerifiedHtml_(customerName, productName, amount, currency, orderId, unlockUrl);
   GmailApp.sendEmail(customerEmail, subject, text, {name: BRAND_NAME, replyTo: ADMIN_EMAIL, htmlBody: html});
   return json_({ok:true, action:'paymentVerified'});
+}
+
+function sendPaymentFailedEmail_(p) {
+  const customerEmail = String(p.customerEmail || '').trim();
+  const customerName = String(p.customerName || 'there').trim();
+  const productName = String(p.productName || 'your product').trim();
+  const amount = String(p.amount || '0');
+  const currency = String(p.currency || 'PHP');
+  const orderId = String(p.orderId || '').trim();
+  if (!/^\S+@\S+\.\S+$/.test(customerEmail)) throw new Error('Invalid customer email.');
+  const subject = `Payment Not Approved — ${productName}`;
+  const text = `Hello ${customerName},\n\nYour payment proof for ${productName} was not approved.\nAmount: ${amount} ${currency}\nOrder: ${orderId}\n\nYour product remains locked. Please return to the STEADFAST Store and start a new payment if you would like to try again.\n\nThank you,\n${BRAND_NAME}`;
+  const html = `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f7;padding:30px;color:#171717"><div style="max-width:620px;margin:auto;background:#fff;border-radius:18px;padding:32px"><h1 style="margin-top:0">Payment not approved</h1><p>Hello ${htmlEscape_(customerName)},</p><p>We could not approve the payment proof for <b>${htmlEscape_(productName)}</b>.</p><div style="padding:18px;background:#f4f4f5;border-radius:12px"><b>${htmlEscape_(amount)} ${htmlEscape_(currency)}</b><br><small>Order: ${htmlEscape_(orderId)}</small></div><p>Your product remains locked. You can return to the STEADFAST Store and try again.</p><p>Thank you,<br><b>${htmlEscape_(BRAND_NAME)}</b></p></div></body></html>`;
+  GmailApp.sendEmail(customerEmail, subject, text, {name: BRAND_NAME, replyTo: ADMIN_EMAIL, htmlBody: html});
+  return json_({ok:true, action:'paymentFailed'});
 }
 
 function buildPaymentSubmittedHtml_(name, product, amount, currency, orderId) {

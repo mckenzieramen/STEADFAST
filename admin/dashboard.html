@@ -167,11 +167,12 @@
               <label>Preview page URL<input id="productPreviewUrl" type="url" placeholder="https://..."></label>
               <label>Preview image upload<input id="productPreviewFile" type="file" accept="image/*"></label>
               <label>Preview image URL<input id="productPreviewImage" type="url" placeholder="https://..."></label>
-              <label>Payment URL<input id="productPaymentUrl" type="url" placeholder="Optional payment link"></label><label>MariBank payment link template<input id="productMariBankLink" type="url" placeholder="Use {amount} and {order} where supported"></label><p class="form-help">The system will generate the QR from this link. Use a provider-supported dynamic payment link if it accepts the amount/order placeholders.</p>
+              <label>Access code (optional)<input id="productAccessCode" type="text" autocomplete="off" placeholder="e.g. SF500"></label>
+              <label>Payment URL<input id="productPaymentUrl" type="url" placeholder="Optional payment link"></label><label>MariBank payment link template<input id="productMariBankLink" type="url" placeholder="Use {amount} and {order} where supported"></label><p class="form-help">The checkout generates a QR from the configured payment URL/link. Payment is manually confirmed by Admin after reviewing the uploaded receipt.</p>
               <label>Unlock / delivery URL<input id="productUnlockUrl" type="url" placeholder="https://..."></label>
               <label class="check-row"><input id="productActive" type="checkbox" checked> Publish product on the public Store</label>
               <button class="primary" type="submit" id="saveProductBtn">Publish Product</button>
-              <p class="form-help">The public checkout uses the fixed amount saved here. For automatic payment confirmation, connect a payment provider webhook later; the storefront never exposes provider secrets.</p>
+              <p class="form-help">The public checkout uses the fixed amount saved here. Customer payment remains locked until Admin confirms the uploaded payment proof.</p>
             </form>
             <div class="panel"><div class="panel-head"><div><h3>Published products</h3><p>Manage price, stock, preview and unlock links.</p></div></div><div id="adminProductList" class="commerce-list"><div class="empty-state">Loading products…</div></div></div>
           </div>
