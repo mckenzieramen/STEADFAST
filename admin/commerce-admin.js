@@ -55,11 +55,19 @@ function editProduct(p){
   $("productId").value=p.id;$("productName").value=p.name||"";$("productDescription").value=p.description||"";$("productPrice").value=p.price??"";$("productCurrency").value=p.currency||"USD";$("productStock").value=p.stock??0;$("productPaymentMethod").value=p.paymentMethod||"Manual verification";$("productPreviewUrl").value=p.previewUrl||"";$("productPaymentUrl").value=p.paymentUrl||"";$("productMariBankLink").value=p.mariBankLink||"";$("productUnlockUrl").value=p.unlockUrl||"";$("productAccessUsername").value=p.accessUsername||"";$("productAccessPassword").value=p.accessPassword||"";$("productAccessCode").value="";$("productActive").checked=p.active!==false;$("productFormTitle").textContent="Edit product";window.goAdminSection?.("commerce");}
 async function loadProducts(){
   if(!auth.currentUser)return;
-  onSnapshot(query(collection(db,"storeProducts"),orderBy("createdAt","desc")),snap=>{
-    productMap.clear();snap.forEach(d=>productMap.set(d.id,{id:d.id,...d.data()}));
-    const host=$("adminProductList");if(!host)return;
+  const host=$("adminProductList");
+  if(!host)return;
+  host.innerHTML='<div class="empty-state">Loading products…</div>';
+  onSnapshot(collection(db,"storeProducts"),snap=>{
+    productMap.clear();
+    snap.forEach(d=>productMap.set(d.id,{id:d.id,...d.data()}));
     if(!productMap.size){host.innerHTML='<div class="empty-state">No products yet.</div>';return;}
-    host.innerHTML=[...productMap.values()].map(p=>`<div class="commerce-item"><div class="commerce-thumb">${(p.previewImages&&p.previewImages[0])?`<img src="${p.previewImages[0]}" alt="">`:""}</div><div><strong>${escapeHtml(p.name||"Untitled")}</strong><small>${escapeHtml(p.currency||"USD")} ${Number(p.price||0).toFixed(2)} · Stock ${Number(p.stock||0)} · <span class="commerce-status ${p.active?"live":"off"}">${p.active?"Published":"Hidden"}</span></small></div><div class="commerce-item-actions"><button data-edit-product="${p.id}">Edit</button><button class="danger" data-delete-product="${p.id}">Delete</button></div></div>`).join("");
+    host.innerHTML=[...productMap.values()]
+      .sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0))
+      .map(p=>`<div class="commerce-item"><div class="commerce-thumb">${(p.previewImages&&p.previewImages[0])?`<img src="${p.previewImages[0]}" alt="">`:""}</div><div><strong>${escapeHtml(p.name||"Untitled")}</strong><small>${escapeHtml(p.currency||"PHP")} ${Number(p.price||0).toFixed(2)} · Stock ${Number(p.stock||0)} · <span class="commerce-status ${p.active?"live":"off"}">${p.active?"Published":"Hidden"}</span></small></div><div class="commerce-item-actions"><button data-edit-product="${p.id}">Edit</button><button class="danger" data-delete-product="${p.id}">Delete</button></div></div>`).join("");
+  },err=>{
+    console.error("Could not load products:",err);
+    host.innerHTML=`<div class="empty-state">Could not load products.<br><small>${escapeHtml(err?.code||err?.message||"Firestore error")}</small></div>`;
   });
 }
 async function deleteProduct(id){if(!confirm("Delete this product?"))return;await deleteDoc(doc(db,"storeProducts",id));}
@@ -75,16 +83,33 @@ async function saveProject(e){
 }
 function clearProject(){["projectId","projectTitle","projectCategory","projectObjective","projectDescription","projectPreviewUrl","projectVisitUrl","projectImage","projectDetailsUrl"].forEach(id=>{if($(id))$(id).value=""});if($("projectPublished"))$("projectPublished").checked=true;if($("projectFormTitle"))$("projectFormTitle").textContent="Add project";}
 function editProject(p){$("projectId").value=p.id;$("projectTitle").value=p.title||"";$("projectCategory").value=p.category||"";$("projectObjective").value=p.objective||"";$("projectDescription").value=p.description||"";$("projectPreviewUrl").value=p.previewUrl||"";$("projectVisitUrl").value=p.visitUrl||"";$("projectImage").value=p.image||"";$("projectDetailsUrl").value=p.detailsUrl||"";$("projectPublished").checked=p.published!==false;$("projectFormTitle").textContent="Edit project";window.goAdminSection?.("commerce");document.querySelector('[data-commerce-tab="projects"]')?.click();}
-async function loadProjects(){if(!auth.currentUser)return;onSnapshot(query(collection(db,"portfolioProjects"),orderBy("createdAt","desc")),snap=>{projectMap.clear();snap.forEach(d=>projectMap.set(d.id,{id:d.id,...d.data()}));const host=$("adminProjectList");if(!host)return;if(!projectMap.size){host.innerHTML='<div class="empty-state">No projects yet.</div>';return}host.innerHTML=[...projectMap.values()].map(p=>`<div class="commerce-item"><div class="commerce-thumb">${p.image?`<img src="${p.image}" alt="">`:""}</div><div><strong>${escapeHtml(p.title||"Untitled")}</strong><small>${escapeHtml(p.category||"PROJECT")} · <span class="commerce-status ${p.published?"live":"off"}">${p.published?"Published":"Hidden"}</span></small></div><div class="commerce-item-actions"><button data-edit-project="${p.id}">Edit</button><button class="danger" data-delete-project="${p.id}">Delete</button></div></div>`).join("")});}
+async function loadProjects(){
+  if(!auth.currentUser)return;
+  const host=$("adminProjectList");
+  if(!host)return;
+  onSnapshot(collection(db,"portfolioProjects"),snap=>{
+    projectMap.clear();
+    snap.forEach(d=>projectMap.set(d.id,{id:d.id,...d.data()}));
+    if(!projectMap.size){host.innerHTML='<div class="empty-state">No projects yet.</div>';return;}
+    host.innerHTML=[...projectMap.values()].sort((a,b)=>(b.createdAt?.seconds||0)-(a.createdAt?.seconds||0)).map(p=>`<div class="commerce-item"><div class="commerce-thumb">${p.image?`<img src="${p.image}" alt="">`:""}</div><div><strong>${escapeHtml(p.title||"Untitled")}</strong><small>${escapeHtml(p.category||"PROJECT")} · <span class="commerce-status ${p.published?"live":"off"}">${p.published?"Published":"Hidden"}</span></small></div><div class="commerce-item-actions"><button data-edit-project="${p.id}">Edit</button><button class="danger" data-delete-project="${p.id}">Delete</button></div></div>`).join("");
+  },err=>{
+    console.error("Could not load projects:",err);
+    host.innerHTML=`<div class="empty-state">Could not load projects.<br><small>${escapeHtml(err?.code||err?.message||"Firestore error")}</small></div>`;
+  });
+}
 async function deleteProject(id){if(!confirm("Delete this project?"))return;await deleteDoc(doc(db,"portfolioProjects",id));}
 function escapeHtml(v=""){return String(v).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));}
 
 function loadOrders(){
   if(!auth.currentUser)return;
-  onSnapshot(query(collection(db,"storeOrders"),orderBy("createdAt","desc")),snap=>{
-    const rows=$("storeOrderRows");if(!rows)return;
-    if(snap.empty){rows.innerHTML='<tr><td colspan="7">No orders yet.</td></tr>';return}
-    rows.innerHTML=snap.docs.map(d=>{const o=d.data();const date=o.createdAt?.toDate?o.createdAt.toDate().toLocaleString():"—";return `<tr><td><code>${d.id.slice(0,10)}</code></td><td>${escapeHtml(o.customerName||"—")}<br><small>${escapeHtml(o.customerEmail||"")}</small></td><td>${escapeHtml(o.productName||"—")}</td><td>${escapeHtml(o.currency||"USD")} ${Number(o.amount||0).toFixed(2)}</td><td><select class="order-status-select" data-order-status="${d.id}"><option value="pending" ${o.status==="pending"?"selected":""}>Pending</option><option value="verifying" ${o.status==="verifying"?"selected":""}>Verifying</option><option value="paid" ${o.status==="paid"?"selected":""}>Paid / Unlocked</option><option value="failed" ${o.status==="failed"?"selected":""}>Failed</option><option value="cancelled" ${o.status==="cancelled"?"selected":""}>Cancelled</option></select></td><td>${o.receiptUrl?`<a href="${escapeHtml(o.receiptUrl)}" target="_blank" rel="noopener">View proof</a>`:"—"}<br><small>${escapeHtml(date)}</small></td><td><button class="text-btn" data-open-order="${d.id}">Open</button></td></tr>`}).join("");
+  const rows=$("storeOrderRows");
+  if(!rows)return;
+  onSnapshot(collection(db,"storeOrders"),snap=>{
+    if(snap.empty){rows.innerHTML='<tr><td colspan="7">No orders yet.</td></tr>';return;}
+    rows.innerHTML=snap.docs.slice().sort((a,b)=>(b.data().createdAt?.seconds||0)-(a.data().createdAt?.seconds||0)).map(d=>{const o=d.data();const date=o.createdAt?.toDate?o.createdAt.toDate().toLocaleString():"—";return `<tr><td><code>${d.id.slice(0,10)}</code></td><td>${escapeHtml(o.customerName||"—")}<br><small>${escapeHtml(o.customerEmail||"")}</small></td><td>${escapeHtml(o.productName||"—")}</td><td>${escapeHtml(o.currency||"PHP")} ${Number(o.amount||0).toFixed(2)}</td><td><select class="order-status-select" data-order-status="${d.id}"><option value="pending" ${o.status==="pending"?"selected":""}>Pending</option><option value="verifying" ${o.status==="verifying"?"selected":""}>Verifying</option><option value="paid" ${o.status==="paid"?"selected":""}>Paid / Unlocked</option><option value="failed" ${o.status==="failed"?"selected":""}>Failed</option><option value="cancelled" ${o.status==="cancelled"?"selected":""}>Cancelled</option></select></td><td>${o.receiptUrl?`<a href="${escapeHtml(o.receiptUrl)}" target="_blank" rel="noopener">View proof</a>`:"—"}<br><small>${escapeHtml(date)}</small></td><td><button class="text-btn" data-open-order="${d.id}">Open</button></td></tr>`}).join("");
+  },err=>{
+    console.error("Could not load orders:",err);
+    rows.innerHTML=`<tr><td colspan="7">Could not load orders: ${escapeHtml(err?.code||err?.message||"Firestore error")}</td></tr>`;
   });
 }
 async function updateOrderStatus(id,status){const orderRef=doc(db,"storeOrders",id);const before=await getDoc(orderRef);const prev=before.data()||{};await updateDoc(orderRef,{status,updatedAt:serverTimestamp()});if(status==="paid"&&prev.status!=="paid"&&prev.productId){const pRef=doc(db,"storeProducts",prev.productId);await runTransaction(db,async tx=>{const ps=await tx.get(pRef);if(!ps.exists())return;const current=Math.max(0,Number(ps.data().stock||0));tx.update(pRef,{stock:Math.max(0,current-1),updatedAt:serverTimestamp()});});sendPaymentEmail({action:"paymentVerified",customerEmail:prev.customerEmail,customerName:prev.customerName,productName:prev.productName,amount:prev.amount,currency:prev.currency,orderId:id,unlockUrl:prev.unlockUrl||"",accessUsername:prev.accessUsername||"",accessPassword:prev.accessPassword||""});} else if(status==="failed"&&prev.status!=="failed"){sendPaymentEmail({action:"paymentFailed",customerEmail:prev.customerEmail,customerName:prev.customerName,productName:prev.productName,amount:prev.amount,currency:prev.currency,orderId:id});}}
