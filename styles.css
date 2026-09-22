@@ -258,3 +258,6 @@ body.page-leaving{opacity:0;pointer-events:none}
 .quote-nav-unavailable{display:inline-flex!important;align-items:center;gap:6px}
 .quote-nav-unavailable span{font-size:7px;letter-spacing:.7px;padding:3px 6px;border:1px solid #ffffff24;border-radius:999px;color:#aaa8b3}
 .quote-nav-unavailable:after{display:none!important}
+
+/* McKenzie local screenshots intentionally removed; live preview remains available. */
+.sf-live-preview-placeholder{min-height:240px;display:flex;align-items:center;justify-content:center;flex-direction:column;text-align:center;padding:32px;border:1px dashed rgba(128,90,213,.35);background:rgba(128,90,213,.06);font-weight:700;letter-spacing:.02em}.sf-live-preview-placeholder span{margin-top:8px;font-size:.82rem;font-weight:500;opacity:.7}

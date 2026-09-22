@@ -31,7 +31,6 @@ async function loadWorks(){
     description:"A real restaurant website and admin system with ordering, accounts, reviews, support, product management, analytics and admin workflows.",
     previewUrl:"https://mckenzieramen.github.io/mckenzie-ramen-house/",
     visitUrl:"https://mckenzieramen.github.io/mckenzie-ramen-house/",
-    image:"assets/mckenzie/customer-home.png",
     tag:"REAL PROJECT"
   }];
   try {

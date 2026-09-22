@@ -167,7 +167,7 @@
               <label>Preview page URL<input id="productPreviewUrl" type="url" placeholder="https://..."></label>
               <label>Preview image upload<input id="productPreviewFile" type="file" accept="image/*"></label>
               <label>Preview image URL<input id="productPreviewImage" type="url" placeholder="https://..."></label>
-              <label>Payment URL<input id="productPaymentUrl" type="url" placeholder="Your fixed-price checkout/payment link"></label>
+              <label>Payment URL<input id="productPaymentUrl" type="url" placeholder="Optional payment link"></label><label>MariBank payment link template<input id="productMariBankLink" type="url" placeholder="Use {amount} and {order} where supported"></label><p class="form-help">The system will generate the QR from this link. Use a provider-supported dynamic payment link if it accepts the amount/order placeholders.</p>
               <label>Unlock / delivery URL<input id="productUnlockUrl" type="url" placeholder="https://..."></label>
               <label class="check-row"><input id="productActive" type="checkbox" checked> Publish product on the public Store</label>
               <button class="primary" type="submit" id="saveProductBtn">Publish Product</button>
@@ -197,7 +197,7 @@
           </div>
         </div>
         <div class="commerce-panel" id="commerce-orders" hidden>
-          <div class="panel"><div class="panel-head"><div><p class="kicker">SALES</p><h3>Product orders</h3><p>Mark an order paid after payment confirmation to unlock its delivery link.</p></div></div><div class="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Product</th><th>Amount</th><th>Status</th><th>Date</th><th></th></tr></thead><tbody id="storeOrderRows"><tr><td colspan="7">Loading orders…</td></tr></tbody></table></div></div>
+          <div class="panel"><div class="panel-head"><div><p class="kicker">SALES</p><h3>Product orders</h3><p>Review payment proof, mark failed/verifying, or confirm payment to unlock the product. Paid orders reduce stock automatically.</p></div></div><div class="table-wrap"><table><thead><tr><th>Order</th><th>Customer</th><th>Product</th><th>Amount</th><th>Status</th><th>Date</th><th></th></tr></thead><tbody id="storeOrderRows"><tr><td colspan="7">Loading orders…</td></tr></tbody></table></div></div>
         </div>
       </section>
 
