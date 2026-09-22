@@ -164,15 +164,18 @@
               <label>Description<textarea id="productDescription" rows="3" required placeholder="What does the buyer receive?"></textarea></label>
               <div class="form-two"><label>Fixed price<input id="productPrice" type="number" min="0" step="0.01" required placeholder="25"></label><label>Currency<select id="productCurrency"><option>USD</option><option>PHP</option><option>AUD</option><option>CAD</option><option>GBP</option><option>EUR</option></select></label></div>
               <div class="form-two"><label>Stock<input id="productStock" type="number" min="0" step="1" value="1" required></label><label>Payment method<input id="productPaymentMethod" value="Payment Link" required placeholder="GCash / PayPal / Stripe"></label></div>
-              <label>Live preview page URL<input id="productPreviewUrl" type="url" placeholder="https://..." required></label>
+              <label>Preview page URL<input id="productPreviewUrl" type="url" placeholder="https://..."></label>
+              <label>Preview images<input id="productPreviewFiles" type="file" accept="image/*" multiple></label>
+              <p class="form-help">Upload multiple preview screenshots. Customers can click the preview to browse them in a gallery.</p>
               <label>Access code (optional)<input id="productAccessCode" type="text" autocomplete="off" placeholder="e.g. SF500"></label>
               <label>Payment URL<input id="productPaymentUrl" type="url" placeholder="Optional payment link"></label><label>MariBank payment link template<input id="productMariBankLink" type="url" placeholder="Use {amount} and {order} where supported"></label><p class="form-help">The checkout generates a QR from the configured payment URL/link. Payment is manually confirmed by Admin after reviewing the uploaded receipt.</p>
               <label>Unlock / delivery URL<input id="productUnlockUrl" type="url" placeholder="https://..."></label>
+              <div class="form-two"><label>Access username (optional)<input id="productAccessUsername" type="text" placeholder="buyer login"></label><label>Access password (optional)<input id="productAccessPassword" type="text" autocomplete="off" placeholder="buyer password"></label></div>
               <label class="check-row"><input id="productActive" type="checkbox" checked> Publish product on the public Store</label>
-              <div class="commerce-form-actions"><button class="primary" type="submit" id="saveProductBtn">Publish Product</button><button class="text-btn" type="button" id="createSampleProductBtn">Create Sample Product</button></div>
+              <button class="primary" type="submit" id="saveProductBtn">Publish Product</button>
               <p class="form-help">The public checkout uses the fixed amount saved here. Customer payment remains locked until Admin confirms the uploaded payment proof.</p>
             </form>
-            <div class="panel"><div class="panel-head"><div><h3>Published products</h3><p>Products published here automatically appear on the separate Store page.</p></div></div><div id="adminProductList" class="commerce-list"><div class="empty-state">Loading products…</div></div></div>
+            <div class="panel"><div class="panel-head"><div><h3>Published products</h3><p>Manage price, stock, preview and unlock links.</p></div></div><div id="adminProductList" class="commerce-list"><div class="empty-state">Loading products…</div></div></div>
           </div>
         </div>
         <div class="commerce-panel" id="commerce-projects" hidden>

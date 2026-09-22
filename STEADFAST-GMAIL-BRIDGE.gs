@@ -195,10 +195,12 @@ function sendPaymentVerifiedEmail_(p) {
   const currency = String(p.currency || 'PHP');
   const orderId = String(p.orderId || '').trim();
   const unlockUrl = String(p.unlockUrl || '').trim();
+  const accessUsername = String(p.accessUsername || '').trim();
+  const accessPassword = String(p.accessPassword || '').trim();
   if (!/^\S+@\S+\.\S+$/.test(customerEmail)) throw new Error('Invalid customer email.');
   const subject = `Payment Verified — ${productName} is Ready`;
-  const text = `Hello ${customerName},\n\nYour payment for ${productName} has been verified.\nAmount: ${amount} ${currency}\nOrder: ${orderId}\n\nAccess your product: ${unlockUrl || 'Open your STEADFAST order page to unlock your purchase.'}\n\nThank you,\n${BRAND_NAME}`;
-  const html = buildPaymentVerifiedHtml_(customerName, productName, amount, currency, orderId, unlockUrl);
+  const text = `Hello ${customerName},\n\nYour payment for ${productName} has been verified.\nAmount: ${amount} ${currency}\nOrder: ${orderId}\n\nAccess your product: ${unlockUrl || 'Open your STEADFAST order page to unlock your purchase.'}\n${accessUsername ? `\nUsername: ${accessUsername}` : ''}${accessPassword ? `\nPassword: ${accessPassword}` : ''}\n\nThank you,\n${BRAND_NAME}`;
+  const html = buildPaymentVerifiedHtml_(customerName, productName, amount, currency, orderId, unlockUrl, accessUsername, accessPassword);
   GmailApp.sendEmail(customerEmail, subject, text, {name: BRAND_NAME, replyTo: ADMIN_EMAIL, htmlBody: html});
   return json_({ok:true, action:'paymentVerified'});
 }
@@ -221,9 +223,10 @@ function sendPaymentFailedEmail_(p) {
 function buildPaymentSubmittedHtml_(name, product, amount, currency, orderId) {
   return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f7;padding:30px;color:#171717"><div style="max-width:620px;margin:auto;background:#fff;border-radius:18px;padding:32px"><h1 style="margin-top:0">Payment proof received ✓</h1><p>Hello ${htmlEscape_(name)},</p><p>We received your payment proof for <b>${htmlEscape_(product)}</b>.</p><div style="padding:18px;background:#f4f4f5;border-radius:12px"><b>${htmlEscape_(amount)} ${htmlEscape_(currency)}</b><br><small>Order: ${htmlEscape_(orderId)}</small></div><p>Your payment is now being verified. We will email you again once it is confirmed and your product is unlocked.</p><p>Thank you,<br><b>${htmlEscape_(BRAND_NAME)}</b></p></div></body></html>`;
 }
-function buildPaymentVerifiedHtml_(name, product, amount, currency, orderId, unlockUrl) {
+function buildPaymentVerifiedHtml_(name, product, amount, currency, orderId, unlockUrl, accessUsername, accessPassword) {
+  const credentials = (accessUsername || accessPassword) ? `<div style="padding:18px;background:#f7f3ff;border:1px solid #e5d9ff;border-radius:12px;margin:18px 0"><b>Product access</b>${accessUsername ? `<br>Username: ${htmlEscape_(accessUsername)}` : ''}${accessPassword ? `<br>Password: ${htmlEscape_(accessPassword)}` : ''}</div>` : '';
   const button = unlockUrl ? `<p><a href="${htmlEscape_(unlockUrl)}" style="display:inline-block;background:#111;color:#fff;padding:14px 20px;border-radius:10px;text-decoration:none;font-weight:700">Unlock / Access Product →</a></p>` : '';
-  return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f7;padding:30px;color:#171717"><div style="max-width:620px;margin:auto;background:#fff;border-radius:18px;padding:32px"><h1 style="margin-top:0">Payment verified ✓</h1><p>Hello ${htmlEscape_(name)},</p><p>Your payment for <b>${htmlEscape_(product)}</b> has been verified.</p><div style="padding:18px;background:#f4f4f5;border-radius:12px"><b>${htmlEscape_(amount)} ${htmlEscape_(currency)}</b><br><small>Order: ${htmlEscape_(orderId)}</small></div>${button}<p>Thank you for your purchase.</p><p>${htmlEscape_(BRAND_NAME)}</p></div></body></html>`;
+  return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f7;padding:30px;color:#171717"><div style="max-width:620px;margin:auto;background:#fff;border-radius:18px;padding:32px"><h1 style="margin-top:0">Payment verified ✓</h1><p>Hello ${htmlEscape_(name)},</p><p>Your payment for <b>${htmlEscape_(product)}</b> has been verified.</p><div style="padding:18px;background:#f4f4f5;border-radius:12px"><b>${htmlEscape_(amount)} ${htmlEscape_(currency)}</b><br><small>Order: ${htmlEscape_(orderId)}</small></div>${credentials}${button}<p>Thank you for your purchase.</p><p>${htmlEscape_(BRAND_NAME)}</p></div></body></html>`;
 }
 
 function sendAdminEmail_(p) {
