@@ -39,3 +39,8 @@ When a website quotation is successfully written to Firestore, the website reque
 3. An admin notification to `yahhclffjnd@gmail.com`.
 
 If the customer does not receive the email, first check the Apps Script **Executions** panel and Gmail **Sent** folder. Google Apps Script requires authorization before a script can use Gmail services.
+
+## Store payment emails
+The checkout now sends HTML payment-submitted and payment-verified emails through the same Google Apps Script Gmail bridge. After changing `STEADFAST-GMAIL-BRIDGE.gs`, redeploy the Apps Script Web App using the same URL in `email-config.js`.
+
+MariBank / QR: the admin can save a provider-supported payment link template. `{amount}` is replaced with the fixed product amount and `{order}` with the order ID. The QR is generated from the resulting link. A QR Ph-compatible QR can be scanned by supported banking apps; the website does not claim to verify a bank transfer by itself.

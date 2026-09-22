@@ -106,9 +106,9 @@ function openCheckout(p){
   body.querySelector("#sfOrderForm").addEventListener("submit",async e=>{
     e.preventDefault();
     const fd=new FormData(e.currentTarget);
-    const order={productId:p.id,productName:p.name,customerName:fd.get("name"),customerEmail:fd.get("email"),amount:Number(p.price||0),currency:p.currency||"USD",paymentMethod:p.paymentMethod||"Online payment",status:"pending",createdAt:serverTimestamp()};
+    const order={productId:p.id,productName:p.name,customerName:fd.get("name"),customerEmail:fd.get("email"),amount:Number(p.price||0),currency:p.currency||"USD",paymentMethod:p.paymentMethod||"Online payment",unlockUrl:p.unlockUrl||"",status:"pending",createdAt:serverTimestamp()};
     try{
-      const ref=await addDoc(collection(db,"storeOrders"),order); await addDoc(collection(db,"storeUnlocks"),{orderId:ref.id,productId:p.id,productName:p.name,amount:Number(p.price||0),currency:p.currency||"USD",paymentMethod:p.paymentMethod||"Online payment",paymentUrl:p.paymentUrl||"",unlockUrl:p.unlockUrl||"",status:"pending",createdAt:serverTimestamp()});
+      const ref=await addDoc(collection(db,"storeOrders"),order); await addDoc(collection(db,"storeUnlocks"),{orderId:ref.id,productId:p.id,productName:p.name,amount:Number(p.price||0),currency:p.currency||"USD",paymentMethod:p.paymentMethod||"Online payment",paymentUrl:p.paymentUrl||"",mariBankLink:p.mariBankLink||"",unlockUrl:p.unlockUrl||"",status:"pending",createdAt:serverTimestamp()});
       location.href=`pay.html?order=${encodeURIComponent(ref.id)}`;
     }catch(err){ alert("We couldn't create the order yet. Please try again."); console.error(err); }
   });

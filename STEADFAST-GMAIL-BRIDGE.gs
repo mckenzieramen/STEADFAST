@@ -33,6 +33,8 @@ function doPost(e) {
 
     if (action === 'sendQuoteEmail') return sendQuoteEmail_(p);
     if (action === 'sendEmail') return sendAdminEmail_(p);
+    if (action === 'paymentSubmitted') return sendPaymentSubmittedEmail_(p);
+    if (action === 'paymentVerified') return sendPaymentVerifiedEmail_(p);
     if (action === 'health') return json_({ ok: true, service: 'STEADFAST Gmail Bridge', status: 'ready' });
 
     return json_({ ok: false, error: 'Unknown action.' });
@@ -165,6 +167,47 @@ function sendQuoteEmail_(p) {
     adminEmail: ADMIN_EMAIL,
     message: 'Customer confirmation and admin notification sent.'
   });
+}
+
+
+function sendPaymentSubmittedEmail_(p) {
+  const customerEmail = String(p.customerEmail || '').trim();
+  const customerName = String(p.customerName || 'there').trim();
+  const productName = String(p.productName || 'your product').trim();
+  const amount = String(p.amount || '0');
+  const currency = String(p.currency || 'PHP');
+  const orderId = String(p.orderId || '').trim();
+  if (!/^\S+@\S+\.\S+$/.test(customerEmail)) throw new Error('Invalid customer email.');
+  const subject = `STEADFAST Payment Received for Verification — ${productName}`;
+  const text = `Hello ${customerName},\n\nWe received your payment proof for ${productName}.\nAmount: ${amount} ${currency}\nOrder: ${orderId}\n\nYour payment is now being verified. We will email you again once the payment is confirmed and your product is unlocked.\n\nThank you,\n${BRAND_NAME}`;
+  const html = buildPaymentSubmittedHtml_(customerName, productName, amount, currency, orderId);
+  GmailApp.sendEmail(customerEmail, subject, text, {name: BRAND_NAME, replyTo: ADMIN_EMAIL, htmlBody: html});
+  GmailApp.sendEmail(ADMIN_EMAIL, `Payment Proof Submitted — ${productName}`, `Customer: ${customerName}\nEmail: ${customerEmail}\nProduct: ${productName}\nAmount: ${amount} ${currency}\nOrder: ${orderId}`, {name: BRAND_NAME, replyTo: customerEmail});
+  return json_({ok:true, action:'paymentSubmitted'});
+}
+
+function sendPaymentVerifiedEmail_(p) {
+  const customerEmail = String(p.customerEmail || '').trim();
+  const customerName = String(p.customerName || 'there').trim();
+  const productName = String(p.productName || 'your product').trim();
+  const amount = String(p.amount || '0');
+  const currency = String(p.currency || 'PHP');
+  const orderId = String(p.orderId || '').trim();
+  const unlockUrl = String(p.unlockUrl || '').trim();
+  if (!/^\S+@\S+\.\S+$/.test(customerEmail)) throw new Error('Invalid customer email.');
+  const subject = `Payment Verified — ${productName} is Ready`;
+  const text = `Hello ${customerName},\n\nYour payment for ${productName} has been verified.\nAmount: ${amount} ${currency}\nOrder: ${orderId}\n\nAccess your product: ${unlockUrl || 'Open your STEADFAST order page to unlock your purchase.'}\n\nThank you,\n${BRAND_NAME}`;
+  const html = buildPaymentVerifiedHtml_(customerName, productName, amount, currency, orderId, unlockUrl);
+  GmailApp.sendEmail(customerEmail, subject, text, {name: BRAND_NAME, replyTo: ADMIN_EMAIL, htmlBody: html});
+  return json_({ok:true, action:'paymentVerified'});
+}
+
+function buildPaymentSubmittedHtml_(name, product, amount, currency, orderId) {
+  return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f7;padding:30px;color:#171717"><div style="max-width:620px;margin:auto;background:#fff;border-radius:18px;padding:32px"><h1 style="margin-top:0">Payment proof received ✓</h1><p>Hello ${htmlEscape_(name)},</p><p>We received your payment proof for <b>${htmlEscape_(product)}</b>.</p><div style="padding:18px;background:#f4f4f5;border-radius:12px"><b>${htmlEscape_(amount)} ${htmlEscape_(currency)}</b><br><small>Order: ${htmlEscape_(orderId)}</small></div><p>Your payment is now being verified. We will email you again once it is confirmed and your product is unlocked.</p><p>Thank you,<br><b>${htmlEscape_(BRAND_NAME)}</b></p></div></body></html>`;
+}
+function buildPaymentVerifiedHtml_(name, product, amount, currency, orderId, unlockUrl) {
+  const button = unlockUrl ? `<p><a href="${htmlEscape_(unlockUrl)}" style="display:inline-block;background:#111;color:#fff;padding:14px 20px;border-radius:10px;text-decoration:none;font-weight:700">Unlock / Access Product →</a></p>` : '';
+  return `<!doctype html><html><body style="font-family:Arial,sans-serif;background:#f5f5f7;padding:30px;color:#171717"><div style="max-width:620px;margin:auto;background:#fff;border-radius:18px;padding:32px"><h1 style="margin-top:0">Payment verified ✓</h1><p>Hello ${htmlEscape_(name)},</p><p>Your payment for <b>${htmlEscape_(product)}</b> has been verified.</p><div style="padding:18px;background:#f4f4f5;border-radius:12px"><b>${htmlEscape_(amount)} ${htmlEscape_(currency)}</b><br><small>Order: ${htmlEscape_(orderId)}</small></div>${button}<p>Thank you for your purchase.</p><p>${htmlEscape_(BRAND_NAME)}</p></div></body></html>`;
 }
 
 function sendAdminEmail_(p) {
