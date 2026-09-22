@@ -12,7 +12,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyD13MXR0ZQSJpJBxQKYPmsMKjl4yzU2hSs",
+  apiKey: "AIzaSyD13MXR0ZQSjPJBxQKYPmsMKjl4yzU2hSs",
   authDomain: "steadfast-1d0e6.firebaseapp.com",
   projectId: "steadfast-1d0e6",
   storageBucket: "steadfast-1d0e6.firebasestorage.app",
@@ -40,6 +40,8 @@ function isAuthorized(email) {
 }
 
 const app = initializeApp(firebaseConfig);
+// Firebase configuration must match the working site/dashboard project key.
+// Keep this key identical to the public site and dashboard Firebase config.
 // Use Firebase's normal browser Auth instance. The previous initializeAuth()
 // setup could produce auth/argument-error on the Cloudflare Pages admin URL.
 const auth = getAuth(app);
