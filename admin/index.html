@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0912">
+  <title>STEADFAST Admin — Sign In</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="auth-shell">
+    <section class="auth-card" aria-labelledby="welcome-title">
+      <a class="brand" href="../index.html" aria-label="Back to STEADFAST home">
+        <span class="brand-mark">S</span>
+        <span>
+          <strong>STEADFAST</strong>
+          <small>BY CLIFF JANDEE MEDRANO</small>
+        </span>
+      </a>
+
+      <div class="auth-copy">
+        <p class="eyebrow">PRIVATE ADMIN AREA</p>
+        <h1 id="welcome-title">Welcome back.</h1>
+        <p class="intro">Sign in with the authorized STEADFAST work Google account to access your dashboard.</p>
+      </div>
+
+      <button id="googleSignIn" class="google-btn" type="button">
+        <span class="google-icon" aria-hidden="true">
+          <svg viewBox="0 0 48 48" role="img">
+            <path fill="#EA4335" d="M24 9.5c3.54 0 6.37 1.22 8.74 3.6l6.44-6.44C35.27 3.14 30.02 1 24 1 14.82 1 6.87 6.28 3 14l7.5 5.83C12.29 14.57 17.69 9.5 24 9.5z"/>
+            <path fill="#4285F4" d="M46.5 24.55c0-1.63-.15-3.2-.42-4.72H24v9h12.65c-.54 2.9-2.17 5.36-4.64 7.01l7.5 5.83C43.89 37.54 46.5 31.52 46.5 24.55z"/>
+            <path fill="#FBBC05" d="M10.5 28.17A14.5 14.5 0 0 1 9.73 24c0-1.45.26-2.86.77-4.17L3 14a23.96 23.96 0 0 0 0 20l7.5-5.83z"/>
+            <path fill="#34A853" d="M24 47c6.02 0 11.27-1.99 15.02-5.41l-7.5-5.83c-2.08 1.39-4.73 2.22-7.52 2.22-6.31 0-11.71-5.07-13.5-11.83L3 32c3.87 7.72 11.82 13 21 13z"/>
+          </svg>
+        </span>
+        <span>Continue with Google</span>
+      </button>
+
+      <p id="authMessage" class="auth-message" role="alert" aria-live="polite"></p>
+
+      <div class="access-note">
+        <span class="lock">🔒</span>
+        <div>
+          <strong>Authorized access only</strong>
+          <p>Only approved STEADFAST administrator accounts can enter this area.</p>
+        </div>
+      </div>
+
+      <a class="back-link" href="../index.html">← Back to STEADFAST website</a>
+    </section>
+  </main>
+
+  <script type="module" src="./auth.js?v=13"></script>
+</body>
+</html>
