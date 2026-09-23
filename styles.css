@@ -269,3 +269,19 @@ body.page-leaving{opacity:0;pointer-events:none}
 .sf-preview-gallery{display:flex;gap:10px;overflow:auto;margin-top:12px;padding-bottom:4px}.sf-preview-gallery button{width:78px;height:58px;flex:0 0 auto;border:1px solid #ddd8e7;border-radius:10px;overflow:hidden;background:#fff;padding:0;cursor:pointer}.sf-preview-gallery img{width:100%;height:100%;object-fit:cover}.sf-preview-empty{height:100%;display:grid;place-items:center;color:#aaa;font-size:11px;letter-spacing:1.5px}.sf-product-preview-large img{width:100%;height:100%;object-fit:contain;background:#0b0b11}.sf-product-preview-large iframe{width:100%;height:100%;border:0;background:#fff}
 
 .sf-service-error{display:grid;gap:10px;max-width:520px}.sf-service-error small{display:block;color:#91899e;font-size:11px;line-height:1.5}.sf-service-error .btn{justify-self:center;margin-top:6px}
+
+
+/* V36 visible red diagnostic error banner */
+.sf-system-error{position:fixed;z-index:99999;top:18px;left:50%;transform:translateX(-50%);width:min(720px,calc(100vw - 32px));display:flex;align-items:flex-start;gap:13px;padding:15px 17px;border:1px solid #ff5b67;border-radius:14px;background:#5d1119;color:#fff;box-shadow:0 16px 45px rgba(0,0,0,.35),0 0 0 4px rgba(255,91,103,.12);font-family:inherit}
+.sf-system-error[hidden]{display:none}
+.sf-system-error-icon{width:25px;height:25px;flex:0 0 25px;border-radius:50%;display:grid;place-items:center;background:#ff4654;color:#fff;font-weight:900}
+.sf-system-error-content{display:grid;gap:3px;min-width:0}
+.sf-system-error-content strong{font-size:10px;letter-spacing:1.5px;color:#ff9da5}
+.sf-system-error-content span{font-size:14px;font-weight:800}
+.sf-system-error-content small{font-size:11px;line-height:1.5;color:#ffd7da;word-break:break-word}
+.sf-system-error-close{margin-left:auto;border:0;background:transparent;color:#fff;font-size:25px;line-height:1;cursor:pointer;padding:0 3px}
+.sf-error{background:#fff0f1!important;border:2px solid #ef3340!important;color:#5b1219!important;box-shadow:0 8px 24px rgba(239,51,64,.10)}
+.sf-error h2,.sf-error strong{color:#b51624!important}
+.sf-error small{color:#7a2028!important;word-break:break-word}
+.sf-service-error{background:#fff0f1!important;border:2px solid #ef3340!important;color:#5b1219}
+.sf-service-error strong{color:#b51624!important}
