@@ -6,12 +6,6 @@ service cloud.firestore {
         && request.auth.token.email == 'yahhclffjnd@gmail.com';
     }
 
-    function customerOrder(id) {
-      return request.auth != null
-        && request.auth.token.firebase.sign_in_provider == 'anonymous'
-        && resource.data.customerUid == request.auth.uid;
-    }
-
     match /portfolioProjects/{id} {
       allow read: if resource.data.published == true || admin();
       allow create, update, delete: if admin();
@@ -22,27 +16,28 @@ service cloud.firestore {
       allow create, update, delete: if admin();
     }
 
+    // Private order record: customer creates it, only admin can read/change it.
+    // This keeps customer email/access credentials out of the public checkout doc.
     match /storeOrders/{id} {
-      allow create: if request.auth != null
-        && request.auth.token.firebase.sign_in_provider == 'anonymous'
-        && request.resource.data.customerUid == request.auth.uid
-        && request.resource.data.status == 'pending'
+      allow create: if request.resource.data.status == 'pending'
         && request.resource.data.amount >= 0
         && request.resource.data.customerEmail is string;
+      allow read, update, delete: if admin();
+    }
 
-      allow read: if admin() || customerOrder(id);
-
-      allow update: if admin() || (
-        customerOrder(id)
-        && request.resource.data.customerUid == resource.data.customerUid
-        && request.resource.data.customerEmail == resource.data.customerEmail
-        && request.resource.data.status == 'verifying'
-        && resource.data.status in ['pending','failed']
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+    // Public checkout session: contains only checkout/payment state, no email or credentials.
+    // The document ID is the unguessable order ID used in the checkout URL.
+    match /storeCheckout/{id} {
+      allow create: if request.resource.data.status == 'pending'
+        && request.resource.data.amount >= 0
+        && request.resource.data.productName is string;
+      allow read: if true;
+      allow update: if
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly([
           'receiptUrl','receiptFileName','paymentStatus','status','updatedAt'
         ])
-      );
-
+        && request.resource.data.status == 'verifying'
+        && resource.data.status in ['pending','failed'];
       allow delete: if admin();
     }
 

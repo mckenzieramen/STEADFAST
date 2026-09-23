@@ -13,10 +13,9 @@ service firebase.storage {
 
     match /store/receipts/{orderId}/{fileName} {
       allow read: if admin();
-      allow write: if request.auth != null
-        && request.resource.size < 5 * 1024 * 1024
+      allow write: if request.resource.size < 5 * 1024 * 1024
         && (request.resource.contentType.matches('image/.*') || request.resource.contentType == 'application/pdf')
-        && (admin() || firestore.get(/databases/(default)/documents/storeOrders/$(orderId)).data.customerUid == request.auth.uid);
+        && firestore.get(/databases/(default)/documents/storeCheckout/$(orderId)).data.status in ['pending','failed'];
     }
 
     match /store/{allPaths=**} {

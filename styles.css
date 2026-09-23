@@ -267,3 +267,5 @@ body.page-leaving{opacity:0;pointer-events:none}
 
 /* V30 Store product preview gallery */
 .sf-preview-gallery{display:flex;gap:10px;overflow:auto;margin-top:12px;padding-bottom:4px}.sf-preview-gallery button{width:78px;height:58px;flex:0 0 auto;border:1px solid #ddd8e7;border-radius:10px;overflow:hidden;background:#fff;padding:0;cursor:pointer}.sf-preview-gallery img{width:100%;height:100%;object-fit:cover}.sf-preview-empty{height:100%;display:grid;place-items:center;color:#aaa;font-size:11px;letter-spacing:1.5px}.sf-product-preview-large img{width:100%;height:100%;object-fit:contain;background:#0b0b11}.sf-product-preview-large iframe{width:100%;height:100%;border:0;background:#fff}
+
+.sf-service-error{display:grid;gap:10px;max-width:520px}.sf-service-error small{display:block;color:#91899e;font-size:11px;line-height:1.5}.sf-service-error .btn{justify-self:center;margin-top:6px}
