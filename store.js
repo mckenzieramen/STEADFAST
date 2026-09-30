@@ -61,8 +61,15 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
       const last=document.getElementById('sfAuthLastName').value.trim();
       const email=document.getElementById('sfAuthRegisterEmail').value.trim().toLowerCase();
       const username=document.getElementById('sfAuthUsername').value.trim().toLowerCase();
-      if(!first||!last||!email||!username){authStatus('Please complete First Name, Last Name, Email and Username.',true);return}
-      if(!/^[a-z0-9._-]{3,24}$/.test(username)){authStatus('Username must be 3–24 characters using letters, numbers, dot, underscore or hyphen.',true);return}
+
+      if(!first||!last||!email||!username){
+        authStatus('Please complete First Name, Last Name, Email and Username.',true);
+        return;
+      }
+      if(!/^[a-z0-9._-]{3,24}$/.test(username)){
+        authStatus('Username must be 3–24 characters using letters, numbers, dot, underscore or hyphen.',true);
+        return;
+      }
       if(pw.length<6){
         showSystemError('Password is too short.','Your password must be at least 6 characters.');
         authStatus('Password must be at least 6 characters.',true);
@@ -73,17 +80,50 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
         authStatus('Passwords do not match. Please check both password fields.',true);
         return;
       }
+
       const captchaToken=getCustomerRecaptchaToken();
-      if(!captchaToken){authStatus('Please complete the “I’m not a robot” verification.',true);return}
+      if(!captchaToken){
+        authStatus('Please complete the “I’m not a robot” verification.',true);
+        return;
+      }
+
       authStatus('Creating your STEADFAST account…');
       try{
         const result=await Promise.race([
-          registerCustomer({firstName:first,lastName:last,email,username,password:pw,recaptchaToken:captchaToken}),
-          new Promise((_,reject)=>setTimeout(()=>reject(new Error('Account creation timed out. Please try again.')),30000))
+          registerCustomer({
+            firstName:first,
+            lastName:last,
+            email,
+            username,
+            password:pw,
+            recaptchaToken:captchaToken
+          }),
+          new Promise((_,reject)=>setTimeout(
+            ()=>reject(new Error('Account creation timed out. Please try again.')),
+            30000
+          ))
         ]);
-        if(!result?.data?.ok)throw new Error(result?.data?.message||'The account could not be created.');
+
+        const data=result?.data||{};
+        if(!data.ok){
+          throw new Error(data.message||'The account could not be created.');
+        }
+
         resetCustomerRecaptcha();
         setAuthBusy(false);
+
+        if(data.emailSent===false){
+          showSystemError(
+            'Account created, but verification email was not sent.',
+            data.emailError || 'Your account was saved successfully. Please try again later or contact the site administrator to resend the verification email.'
+          );
+          authStatus(
+            'Your account was created successfully, but the verification email could not be sent yet. Your account is saved. Please contact the site administrator to resend the verification email.',
+            true
+          );
+          return;
+        }
+
         document.getElementById('sfAuthTitle').textContent='Verify your email first.';
         document.getElementById('sfAuthIntro').textContent='Your account is created. We sent a verification link to your Gmail/email. Open Gmail, click VERIFY MY EMAIL, then return here to sign in.';
         document.getElementById('sfAuthSubmit').textContent='Sign in →';
@@ -92,9 +132,25 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
       }catch(regErr){
         console.error('Customer registration failed:',regErr);
         resetCustomerRecaptcha();
+
         const code=String(regErr?.code||'');
         const raw=String(regErr?.message||'');
-        const msg=code==='functions/failed-precondition'?'STEADFAST reCAPTCHA server configuration is missing. Please deploy the latest Firebase Functions and configure RECAPTCHA_SECRET_KEY.':code==='functions/permission-denied'?(raw||'Google rejected the reCAPTCHA verification. Please check “I’m not a robot” again.'):code==='functions/already-exists'?'That email or username is already registered. Please use Sign in or choose another username.':code==='functions/invalid-argument'?(raw||'Please check the registration details and try again.'):code==='functions/unavailable'?'The account service is temporarily unavailable. Please try again.':raw||'The account could not be created.';
+        let msg=raw||'The account could not be created.';
+
+        if(code==='functions/failed-precondition'){
+          msg=raw||'STEADFAST server configuration is incomplete. Please check the Firebase Functions configuration.';
+        }else if(code==='functions/permission-denied'){
+          msg=raw||'Google rejected the reCAPTCHA verification. Please check “I’m not a robot” again.';
+        }else if(code==='functions/already-exists'){
+          msg=raw||'That email or username is already registered. Please use Sign in or choose another username.';
+        }else if(code==='functions/invalid-argument'){
+          msg=raw||'Please check the registration details and try again.';
+        }else if(code==='functions/unavailable'){
+          msg=raw||'The account service is temporarily unavailable. Please try again.';
+        }else if(code==='functions/internal'){
+          msg=raw||'The server could not complete account registration. Please try again.';
+        }
+
         authStatus(msg,true);
         showSystemError('Account creation failed.',msg);
         return;
