@@ -5,10 +5,6 @@
 <meta name="description" content="STEADFAST Store — digital products and practical website systems.">
 <title>STEADFAST Store — Digital Products</title>
 <link rel="icon" type="image/png" href="assets/favicon.png"><link rel="stylesheet" href="styles.css">
-<style>
-/* STEADFAST auth mode visibility: registration-only fields must never appear during Sign in. */
-#sfRegisterNames[hidden],#sfRegisterEmailWrap[hidden],#sfRegisterUsernameWrap[hidden],#sfAuthConfirmWrap[hidden],#sfHumanCheckWrap[hidden]{display:none!important}
-</style>
 </head>
 <body><div id="sfSystemError" class="sf-system-error" hidden role="alert" aria-live="assertive"><div class="sf-system-error-icon">!</div><div class="sf-system-error-content"><strong>TEMPORARY ERROR</strong><span id="sfSystemErrorTitle">Something went wrong.</span><small id="sfSystemErrorDetail">Please try again.</small></div><button type="button" class="sf-system-error-close" id="sfSystemErrorClose" aria-label="Close error">×</button></div>
 <header class="site-header" id="top">
@@ -52,7 +48,7 @@
         <label id="sfRegisterUsernameWrap" hidden>Username<input id="sfAuthUsername" type="text" autocomplete="username" placeholder="Choose a username"></label>
         <label>Password<div class="sf-password-field"><input id="sfAuthPassword" type="password" autocomplete="current-password" minlength="6" required><button type="button" class="sf-password-toggle" data-toggle-password="sfAuthPassword" aria-label="Show password">Show</button></div></label>
         <label id="sfAuthConfirmWrap" hidden>Confirm password<div class="sf-password-field"><input id="sfAuthConfirm" type="password" autocomplete="new-password" minlength="6"><button type="button" class="sf-password-toggle" data-toggle-password="sfAuthConfirm" aria-label="Show confirm password">Show</button></div></label>
-        <div id="sfHumanCheckWrap" class="sf-human-check-wrap" hidden><div id="sfRecaptcha" class="g-recaptcha" data-sitekey="REPLACE_WITH_YOUR_RECAPTCHA_V2_SITE_KEY"></div><small class="sf-captcha-note">Security verification is required to create a customer account.</small></div>
+        <div id="sfHumanCheckWrap" class="sf-human-check-wrap" hidden><div id="sfRecaptcha" class="g-recaptcha" data-sitekey="6LdAQNctAAAAABIWeOxURloPVvhrvtGgTlGUsKpj"></div><small class="sf-captcha-note">Security verification is required to create a customer account.</small></div>
         <button class="btn primary full" id="sfAuthSubmit" type="submit">Sign in →</button>
         <div id="sfAuthStatus" class="sf-auth-status" hidden aria-live="polite"></div>
       </form>
@@ -74,5 +70,5 @@
   </div>
 </div>
 <div class="sf-modal" id="sfPreviewModal" hidden><div class="sf-modal-backdrop" data-close-preview></div><div class="sf-modal-card"><button class="sf-modal-close" type="button" data-close-preview aria-label="Close">×</button><div id="sfPreviewBody"></div></div></div>
-<script>window.STEADFAST_RECAPTCHA_SITE_KEY="REPLACE_WITH_YOUR_RECAPTCHA_V2_SITE_KEY";</script><script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script><script src="script.js"></script><script type="module" src="store.js?v=20260930-authfix1"></script>
+<script>window.STEADFAST_RECAPTCHA_SITE_KEY="6LdAQNctAAAAABIWeOxURloPVvhrvtGgTlGUsKpj";</script><script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script><script src="script.js"></script><script type="module" src="store.js"></script>
 </body></html>
