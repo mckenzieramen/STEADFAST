@@ -77,13 +77,27 @@ exports.sendCustomerVerificationEmail = onCall(async (request) => {
 
 exports.verifyCustomerHuman = onCall({ secrets: [recaptchaSecret] }, async (request) => {
   const token = String(request.data?.token || '').trim();
-  const secret = String(recaptchaSecret.value() || '').trim();
 
   if (!token) {
     throw new HttpsError('invalid-argument', 'reCAPTCHA token is required.');
   }
+
+  let secret = '';
+  try {
+    secret = String(recaptchaSecret.value() || '').trim();
+  } catch (error) {
+    console.error('RECAPTCHA_SECRET_KEY could not be loaded:', error);
+    throw new HttpsError(
+      'failed-precondition',
+      'The STEADFAST reCAPTCHA server key is not configured in Firebase Functions. Configure RECAPTCHA_SECRET_KEY and redeploy the function.'
+    );
+  }
+
   if (!secret) {
-    throw new HttpsError('failed-precondition', 'The STEADFAST reCAPTCHA server key is not configured.');
+    throw new HttpsError(
+      'failed-precondition',
+      'The STEADFAST reCAPTCHA server key is not configured in Firebase Functions. Configure RECAPTCHA_SECRET_KEY and redeploy the function.'
+    );
   }
 
   let result;
@@ -93,8 +107,15 @@ exports.verifyCustomerHuman = onCall({ secrets: [recaptchaSecret] }, async (requ
       headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
       body: new URLSearchParams({ secret, response: token })
     });
-    result = await response.json();
+    const raw = await response.text();
+    try {
+      result = JSON.parse(raw || '{}');
+    } catch (_) {
+      console.error('Unexpected response from Google reCAPTCHA:', response.status, raw);
+      throw new HttpsError('unavailable', 'Google reCAPTCHA returned an unexpected response. Please try again.');
+    }
   } catch (error) {
+    if (error instanceof HttpsError) throw error;
     console.error('reCAPTCHA Google verification request failed:', error);
     throw new HttpsError('unavailable', 'The reCAPTCHA verification service could not be reached. Please try again.');
   }

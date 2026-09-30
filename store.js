@@ -86,7 +86,7 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
         resetCustomerRecaptcha();
         const captchaCode=String(captchaErr?.code||'');
         const captchaRaw=String(captchaErr?.message||'');
-        const captchaMessage=captchaCode==='functions/failed-precondition'?'The reCAPTCHA server key is not configured in Firebase Functions.':captchaCode==='functions/unavailable'?'The reCAPTCHA verification service is temporarily unavailable. Please try again.':captchaCode==='functions/permission-denied'?(captchaRaw||'The reCAPTCHA verification was rejected by Google. Please check “I’m not a robot” again.'):captchaRaw||'Please complete the reCAPTCHA again.';
+        const captchaMessage=captchaCode==='functions/failed-precondition'?'The reCAPTCHA server key is not configured in Firebase Functions.':captchaCode==='functions/unavailable'?'The reCAPTCHA verification service is temporarily unavailable. Please try again.':captchaCode==='functions/permission-denied'?(captchaRaw||'The reCAPTCHA verification was rejected by Google. Please check “I’m not a robot” again.'):captchaCode==='functions/internal'?'The reCAPTCHA server configuration is not working yet. Please deploy the latest Firebase Functions and make sure RECAPTCHA_SECRET_KEY is configured.':captchaRaw||'Please complete the reCAPTCHA again.';
         authStatus(captchaMessage,true);
         showSystemError('Security verification failed.',captchaMessage);
         return;
