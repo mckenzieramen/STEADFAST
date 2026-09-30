@@ -62,8 +62,16 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
       const username=document.getElementById('sfAuthUsername').value.trim().toLowerCase();
       if(!first||!last||!email||!username){authStatus('Please complete First Name, Last Name, Email and Username.',true);return}
       if(!/^[a-z0-9._-]{3,24}$/.test(username)){authStatus('Username must be 3–24 characters using letters, numbers, dot, underscore or hyphen.',true);return}
-      if(pw.length<6){authStatus('Password must be at least 6 characters.',true);return}
-      if(pw!==confirm){authStatus('Passwords do not match.',true);return}
+      if(pw.length<6){
+        showSystemError('Password is too short.','Your password must be at least 6 characters.');
+        authStatus('Password must be at least 6 characters.',true);
+        return;
+      }
+      if(pw!==confirm){
+        showSystemError('Passwords do not match.','Please make sure Password and Confirm password are exactly the same.');
+        authStatus('Passwords do not match. Please check both password fields.',true);
+        return;
+      }
       const captchaToken=getCustomerRecaptchaToken();
       if(!captchaToken){authStatus('Please complete the “I’m not a robot” verification.',true);return}
       authStatus('Verifying that you are not a robot…');
@@ -116,8 +124,11 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
     console.error(err);
     if(authMode==='register')resetCustomerRecaptcha();
     const code=err?.code||'';
-    const message=code==='auth/invalid-credential'?'Username/email or password is incorrect.':code==='auth/email-already-in-use'?'That email already has a STEADFAST customer account. Please use Sign in.':code==='auth/weak-password'?'Password must be at least 6 characters.':code==='auth/invalid-email'?'Please enter a valid email address.':code==='auth/operation-not-allowed'?'Email/password sign-in is disabled in Firebase. Enable Authentication → Sign-in method → Email/Password.':code==='auth/network-request-failed'?'Network error. Check your internet connection and try again.':code==='auth/too-many-requests'?'Too many attempts. Please wait a moment and try again.':(err?.message||'Account action failed.');
+    const message=code==='auth/invalid-credential'?'Username/email or password is incorrect.':code==='auth/email-already-in-use'?'That email already has a STEADFAST customer account. Please use Sign in.':code==='auth/weak-password'?'Password must be at least 6 characters.':code==='auth/invalid-email'?'Please enter a valid email address.':code==='auth/operation-not-allowed'?'Email/password sign-in is disabled in Firebase. Enable Authentication → Sign-in method → Email/Password.':code==='auth/network-request-failed'?'Network error. Check your internet connection and try again.':code==='auth/too-many-requests'?'Too many attempts. Please wait a moment and try again.':(code==='functions/internal'||code==='functions/unknown'||String(err?.message||'').toLowerCase().includes('internal'))?'The security verification service could not complete. Please make sure the STEADFAST reCAPTCHA secret key is configured in Firebase Functions, then try again.':(err?.message||'Account action failed.');
     authStatus(message,true);
+    if(authMode==='register' && (code==='functions/internal'||code==='functions/unknown'||String(err?.message||'').toLowerCase().includes('internal'))){
+      showSystemError('Security verification could not be completed.',message);
+    }
   }finally{
     if(!document.getElementById('sfAuthSubmit')?.dataset?.originalText)setAuthBusy(false);
   }
