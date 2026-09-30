@@ -1,8 +1,9 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, signOut, reload } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, reload, setPersistence, browserLocalPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
 import { getFirestore, collection, addDoc, setDoc, getDoc, doc, serverTimestamp, onSnapshot, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 const firebaseConfig={apiKey:"AIzaSyD13MXR0ZQSjPJBxQKYPmsMKjl4yzU2hSs",authDomain:"steadfast-1d0e6.firebaseapp.com",projectId:"steadfast-1d0e6",storageBucket:"steadfast-1d0e6.firebasestorage.app",messagingSenderId:"488385339804",appId:"1:488385339804:web:0d2bcf3967a8f95ccfe859"};
-const customerApp=getApps().find(a=>a.name==="steadfastCustomer")||initializeApp(firebaseConfig,"steadfastCustomer"),db=getFirestore(customerApp),auth=getAuth(customerApp);
+const customerApp=getApps().find(a=>a.name==="steadfastCustomer")||initializeApp(firebaseConfig,"steadfastCustomer"),db=getFirestore(customerApp),auth=getAuth(customerApp),functions=getFunctions(customerApp,"asia-southeast1"),sendCustomVerificationEmail=httpsCallable(functions,"sendCustomerVerificationEmail");
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=(v,c="PHP")=>{try{return new Intl.NumberFormat(undefined,{style:"currency",currency:c}).format(Number(v||0))}catch{return `${c} ${Number(v||0).toFixed(2)}`}};
 let products=[];
@@ -17,14 +18,23 @@ function productCard(p){const stock=Math.max(0,Number(p.stock||0)),out=stock<1;r
 function preview(p){const body=document.getElementById('sfPreviewBody');if(!body)return;const list=imgs(p);body.innerHTML=`<div class="sf-preview-modal-content"><div><div class="sf-product-preview-large" id="previewMain">${mainPreview(p)}</div>${list.length>1?`<div class="sf-preview-gallery">${list.map((x,i)=>`<button type="button" data-gallery="${i}"><img src="${esc(x)}" alt="Preview ${i+1}"></button>`).join('')}</div>`:''}</div><div class="sf-preview-modal-copy"><span class="sf-work-tag">DIGITAL PRODUCT</span><h2>${esc(p.name)}</h2><p>${esc(p.description||'')}</p><div class="sf-checkout-price"><span>Fixed price</span><strong>${money(p.price,p.currency||'PHP')}</strong></div><button class="btn primary full" type="button" data-buy="${esc(p.id)}" ${Number(p.stock||0)<1?'disabled':''}>${Number(p.stock||0)<1?'Sold Out':'Buy to Unlock'} <span>→</span></button></div></div>`;document.getElementById('sfPreviewModal').hidden=false;activateLiveFallbacks(body);body.querySelectorAll('[data-gallery]').forEach(b=>b.addEventListener('click',()=>{const i=Number(b.dataset.gallery),m=document.getElementById('previewMain');if(m&&list[i])m.innerHTML=`<img src="${esc(list[i])}" alt="Preview ${i+1}">`}));body.querySelector('[data-buy]')?.addEventListener('click',()=>openCheckout(p));}
 let authMode='login';
 function authStatus(text,error=false){const el=document.getElementById('sfAuthStatus');if(!el)return;el.textContent=text;el.hidden=false;el.classList.toggle('error',error)}
-function setAuthMode(mode){authMode=mode==='register'?'register':'login';const reg=authMode==='register';document.querySelectorAll('[data-auth-mode]').forEach(b=>b.classList.toggle('active',b.dataset.authMode===authMode));const title=document.getElementById('sfAuthTitle'),intro=document.getElementById('sfAuthIntro'),submit=document.getElementById('sfAuthSubmit'),confirm=document.getElementById('sfAuthConfirmWrap'),pw=document.getElementById('sfAuthPassword'),names=document.getElementById('sfRegisterNames'),username=document.getElementById('sfRegisterUsernameWrap'),registerEmail=document.getElementById('sfRegisterEmailWrap'),human=document.getElementById('sfHumanCheckWrap'),loginLabel=document.getElementById('sfUsernameWrap'),loginInput=document.getElementById('sfAuthEmail');if(title)title.textContent=reg?'Create your STEADFAST account.':'Sign in to your STEADFAST account.';if(intro)intro.textContent=reg?'Create your customer account. We will send a verification link to your Gmail/email before your account can be activated.':'Enter your username or email and password. Your account must be email-verified before you can purchase or review.';if(submit)submit.textContent=reg?'Create account →':'Sign in →';if(confirm)confirm.hidden=!reg;if(names)names.hidden=!reg;if(username)username.hidden=!reg;if(registerEmail)registerEmail.hidden=!reg;if(human)human.hidden=!reg;if(!reg&&document.getElementById('sfHumanCheck'))document.getElementById('sfHumanCheck').checked=false;if(loginLabel)loginLabel.hidden=reg;if(loginInput)loginInput.required=!reg;document.getElementById('sfAuthUsername')?.toggleAttribute('required',reg);document.getElementById('sfAuthRegisterEmail')?.toggleAttribute('required',reg);document.getElementById('sfAuthFirstName')?.toggleAttribute('required',reg);document.getElementById('sfAuthLastName')?.toggleAttribute('required',reg);if(pw)pw.autocomplete=reg?'new-password':'current-password';const st=document.getElementById('sfAuthStatus');if(st)st.hidden=true}function openCustomerAuth(mode='login'){const modal=document.getElementById('sfCustomerAuthModal');if(!modal)return;setAuthMode(mode);modal.hidden=false;document.body.classList.add('modal-open');setTimeout(()=>document.getElementById(authMode==='register'?'sfAuthFirstName':'sfAuthEmail')?.focus(),50)}
+function setAuthBusy(busy){const btn=document.getElementById('sfAuthSubmit');if(!btn)return;btn.disabled=busy;btn.classList.toggle('is-loading',busy);btn.dataset.originalText=btn.dataset.originalText||btn.textContent;if(busy){btn.innerHTML='<span class="sf-auth-spinner" aria-hidden="true"></span> Please wait…';}else{btn.textContent=btn.dataset.originalText;delete btn.dataset.originalText;}}
+function showCustomerLoginSuccess(){const modal=document.getElementById('sfCustomerSuccessModal');if(!modal)return;modal.hidden=false;document.body.classList.add('modal-open');}
+function closeCustomerLoginSuccess(){const modal=document.getElementById('sfCustomerSuccessModal');if(modal)modal.hidden=true;if(!document.querySelector('.sf-modal:not([hidden])'))document.body.classList.remove('modal-open');}
+function setAuthMode(mode){authMode=mode==='register'?'register':'login';const reg=authMode==='register';document.querySelectorAll('[data-auth-mode]').forEach(b=>b.classList.toggle('active',b.dataset.authMode===authMode));const title=document.getElementById('sfAuthTitle'),intro=document.getElementById('sfAuthIntro'),submit=document.getElementById('sfAuthSubmit'),confirm=document.getElementById('sfAuthConfirmWrap'),pw=document.getElementById('sfAuthPassword'),names=document.getElementById('sfRegisterNames'),username=document.getElementById('sfRegisterUsernameWrap'),registerEmail=document.getElementById('sfRegisterEmailWrap'),human=document.getElementById('sfHumanCheckWrap'),loginLabel=document.getElementById('sfUsernameWrap'),loginInput=document.getElementById('sfAuthEmail'),rememberWrap=document.getElementById('sfRememberWrap');if(title)title.textContent=reg?'Create your STEADFAST account.':'Sign in to your STEADFAST account.';if(intro)intro.textContent=reg?'Create your customer account. We will send a verification link to your Gmail/email before your account can be activated.':'Enter your username or email and password. That is all you need to sign in.';if(submit)submit.textContent=reg?'Create account →':'Sign in →';if(confirm)confirm.hidden=!reg;if(names)names.hidden=!reg;if(username)username.hidden=!reg;if(registerEmail)registerEmail.hidden=!reg;if(human)human.hidden=!reg;if(rememberWrap)rememberWrap.hidden=reg;if(!reg&&document.getElementById('sfHumanCheck'))document.getElementById('sfHumanCheck').checked=false;if(loginLabel)loginLabel.hidden=reg;if(loginInput)loginInput.required=!reg;document.getElementById('sfAuthUsername')?.toggleAttribute('required',reg);document.getElementById('sfAuthRegisterEmail')?.toggleAttribute('required',reg);document.getElementById('sfAuthFirstName')?.toggleAttribute('required',reg);document.getElementById('sfAuthLastName')?.toggleAttribute('required',reg);if(pw)pw.autocomplete=reg?'new-password':'current-password';const st=document.getElementById('sfAuthStatus');if(st)st.hidden=true}function openCustomerAuth(mode='login'){const modal=document.getElementById('sfCustomerAuthModal');if(!modal)return;setAuthMode(mode);modal.hidden=false;document.body.classList.add('modal-open');setTimeout(()=>document.getElementById(authMode==='register'?'sfAuthFirstName':'sfAuthEmail')?.focus(),50)}
 function closeCustomerAuth(){const modal=document.getElementById('sfCustomerAuthModal');if(modal)modal.hidden=true;document.body.classList.remove('modal-open')}
 function updateStoreAccount(user){const title=document.getElementById('storeAccountTitle'),detail=document.getElementById('storeAccountDetail'),actions=document.getElementById('storeAccountActions');if(!title||!detail||!actions)return;if(user){title.textContent=`Signed in as ${user.email||'customer'}`;detail.textContent='Your account is ready for purchasing and verified buyer reviews.';actions.innerHTML='<button class="btn primary" type="button" data-buy-account>Browse products →</button><button class="btn ghost" type="button" data-signout>Sign out</button>'}else{title.textContent='Sign in to purchase';detail.textContent='You can browse the Store as a guest. An account is required only when you purchase.';actions.innerHTML='<button class="btn primary" type="button" data-open-auth="login">Sign in</button><button class="btn ghost" type="button" data-open-auth="register">Create account</button><button class="btn ghost" type="button" data-guest-store>Visit as guest</button>'}}
-document.addEventListener('click',e=>{const authBtn=e.target.closest('[data-open-auth]');if(authBtn){e.preventDefault();openCustomerAuth(authBtn.dataset.openAuth);return}const modeBtn=e.target.closest('[data-auth-mode]');if(modeBtn){e.preventDefault();setAuthMode(modeBtn.dataset.authMode);return}const toggle=e.target.closest('[data-toggle-password]');if(toggle){const input=document.getElementById(toggle.dataset.togglePassword);if(input){const showing=input.type==='text';input.type=showing?'password':'text';toggle.textContent=showing?'Show':'Hide';toggle.setAttribute('aria-label',showing?'Show password':'Hide password');}}if(e.target.closest('[data-close-auth]'))closeCustomerAuth();if(e.target.closest('[data-guest-store]'))closeCustomerAuth();if(e.target.closest('[data-buy-account]'))document.getElementById('steadfastStoreGrid')?.scrollIntoView({behavior:'smooth',block:'start'});if(e.target.closest('[data-signout]'))signOut(auth).catch(err=>showSystemError('Could not sign out.',err?.message||'Please try again.'));});
+document.addEventListener('click',e=>{const authBtn=e.target.closest('[data-open-auth]');if(authBtn){e.preventDefault();openCustomerAuth(authBtn.dataset.openAuth);return}const modeBtn=e.target.closest('[data-auth-mode]');if(modeBtn){e.preventDefault();setAuthMode(modeBtn.dataset.authMode);return}const toggle=e.target.closest('[data-toggle-password]');if(toggle){const input=document.getElementById(toggle.dataset.togglePassword);if(input){const showing=input.type==='text';input.type=showing?'password':'text';toggle.textContent=showing?'Show':'Hide';toggle.setAttribute('aria-label',showing?'Show password':'Hide password');}}if(e.target.closest('[data-close-auth]'))closeCustomerAuth();if(e.target.closest('[data-close-success]'))closeCustomerLoginSuccess();if(e.target.closest('[data-guest-store]'))closeCustomerAuth();if(e.target.closest('[data-buy-account]'))document.getElementById('steadfastStoreGrid')?.scrollIntoView({behavior:'smooth',block:'start'});if(e.target.closest('[data-signout]'))signOut(auth).catch(err=>showSystemError('Could not sign out.',err?.message||'Please try again.'));});
 document.addEventListener('keydown',e=>{const modal=document.getElementById('sfCustomerAuthModal');if(e.key==='Escape'&&modal&&!modal.hidden)closeCustomerAuth()});
-async function sendVerification(user){
-  const actionCodeSettings={url:new URL('store.html?verified=1',location.href).href,handleCodeInApp:false};
-  await sendEmailVerification(user,actionCodeSettings);
+async function sendVerification(user, profile={}){
+  const result=await sendCustomVerificationEmail({
+    firstName:String(profile.firstName||''),
+    lastName:String(profile.lastName||''),
+    email:String(user.email||''),
+    uid:String(user.uid||'')
+  });
+  if(!result?.data?.ok) throw new Error(result?.data?.error||'Could not send the STEADFAST verification email.');
+  return result.data;
 }
 async function finishVerificationState(){
   const user=auth.currentUser;
@@ -33,7 +43,77 @@ async function finishVerificationState(){
   if(user.emailVerified)return true;
   return false;
 }
-document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e=>{e.preventDefault();const pw=document.getElementById('sfAuthPassword').value,confirm=document.getElementById('sfAuthConfirm').value;try{if(authMode==='register'){const first=document.getElementById('sfAuthFirstName').value.trim(),last=document.getElementById('sfAuthLastName').value.trim(),email=document.getElementById('sfAuthRegisterEmail').value.trim().toLowerCase(),username=document.getElementById('sfAuthUsername').value.trim().toLowerCase();if(!first||!last||!email||!username){authStatus('Please complete First Name, Last Name, Email and Username.',true);return}if(!/^[a-z0-9._-]{3,24}$/.test(username)){authStatus('Username must be 3–24 characters using letters, numbers, dot, underscore or hyphen.',true);return}if(pw!==confirm){authStatus('Passwords do not match.',true);return}if(!document.getElementById('sfHumanCheck')?.checked){authStatus('Please confirm that you are not a robot.',true);return}authStatus('Creating account…');if(auth.currentUser)await signOut(auth);const aliasRef=doc(db,'customerUsernames',username);const aliasSnap=await getDoc(aliasRef);if(aliasSnap.exists()){authStatus('That username is already taken. Please choose another.',true);return}const cred=await createUserWithEmailAndPassword(auth,email,pw);await setDoc(doc(db,'customerProfiles',cred.user.uid),{uid:cred.user.uid,firstName:first,lastName:last,email,username,createdAt:serverTimestamp()});await setDoc(aliasRef,{email,uid:cred.user.uid,createdAt:serverTimestamp()});await sendVerification(cred.user);await signOut(auth);authStatus('Account created. We sent a verification link to '+email+'. Open the Gmail/email, click the verification link, then return here and sign in.',false);document.getElementById('sfAuthTitle').textContent='Verify your email first.';document.getElementById('sfAuthIntro').textContent='Your account is created but not active for purchases/reviews until the email link is confirmed.';return}let loginValue=document.getElementById('sfAuthEmail').value.trim().toLowerCase();if(!loginValue||!pw){authStatus('Please enter your username/email and password.',true);return}let email=loginValue;if(!loginValue.includes('@')){const alias=await getDoc(doc(db,'customerUsernames',loginValue));if(!alias.exists()){authStatus('Username not found. You can also sign in using your email.',true);return}email=alias.data().email}authStatus('Signing in…');const cred=await signInWithEmailAndPassword(auth,email,pw);await reload(cred.user);if(!cred.user.emailVerified){await sendVerification(cred.user).catch(()=>{});await signOut(auth);authStatus('Your email is not verified yet. We sent another verification link to '+email+'. Verify it first, then sign in again.',true);return}authStatus('Signed in successfully.');closeCustomerAuth()}catch(err){console.error(err);const code=err?.code||'';const message=code==='auth/invalid-credential'?'Username/email or password is incorrect.':code==='auth/email-already-in-use'?'That email already has a STEADFAST customer account. Please use Sign in.':code==='auth/weak-password'?'Password must be at least 6 characters.':code==='auth/invalid-email'?'Please enter a valid email address.':code==='auth/operation-not-allowed'?'Email/password sign-in is disabled in Firebase. Enable Authentication → Sign-in method → Email/Password.':code==='auth/network-request-failed'?'Network error. Check your internet connection and try again.':code==='auth/too-many-requests'?'Too many attempts. Please wait a moment and try again.':(err?.message||'Account action failed.');authStatus(message,true)}});
+document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e=>{
+  e.preventDefault();
+  const submit=document.getElementById('sfAuthSubmit');
+  if(submit?.disabled)return;
+  const pw=document.getElementById('sfAuthPassword').value;
+  const confirm=document.getElementById('sfAuthConfirm').value;
+  try{
+    setAuthBusy(true);
+    if(authMode==='register'){
+      const first=document.getElementById('sfAuthFirstName').value.trim();
+      const last=document.getElementById('sfAuthLastName').value.trim();
+      const email=document.getElementById('sfAuthRegisterEmail').value.trim().toLowerCase();
+      const username=document.getElementById('sfAuthUsername').value.trim().toLowerCase();
+      if(!first||!last||!email||!username){authStatus('Please complete First Name, Last Name, Email and Username.',true);return}
+      if(!/^[a-z0-9._-]{3,24}$/.test(username)){authStatus('Username must be 3–24 characters using letters, numbers, dot, underscore or hyphen.',true);return}
+      if(pw.length<6){authStatus('Password must be at least 6 characters.',true);return}
+      if(pw!==confirm){authStatus('Passwords do not match.',true);return}
+      if(!document.getElementById('sfHumanCheck')?.checked){authStatus('Please confirm that you are not a robot.',true);return}
+      authStatus('Creating your STEADFAST account…');
+      if(auth.currentUser)await signOut(auth);
+      const aliasRef=doc(db,'customerUsernames',username);
+      const aliasSnap=await getDoc(aliasRef);
+      if(aliasSnap.exists()){authStatus('That username is already taken. Please choose another.',true);return}
+      const cred=await createUserWithEmailAndPassword(auth,email,pw);
+      await setDoc(doc(db,'customerProfiles',cred.user.uid),{uid:cred.user.uid,firstName:first,lastName:last,email,username,createdAt:serverTimestamp()});
+      await setDoc(aliasRef,{email,uid:cred.user.uid,createdAt:serverTimestamp()});
+      await sendVerification(cred.user,{firstName:first,lastName:last});
+      await signOut(auth);
+      setAuthBusy(false);
+      authStatus('Verification email sent. Please check your Gmail/email and click VERIFY MY EMAIL to activate your account.',false);
+      document.getElementById('sfAuthTitle').textContent='Verify your email first.';
+      document.getElementById('sfAuthIntro').textContent='Your account is created. Verify the email we sent you, then return here and sign in using your username or email and password.';
+      document.getElementById('sfAuthSubmit').textContent='Sign in →';
+      return;
+    }
+
+    const loginValue=document.getElementById('sfAuthEmail').value.trim().toLowerCase();
+    const remember=document.getElementById('sfRememberMe')?.checked===true;
+    if(!loginValue||!pw){authStatus('Please enter your username/email and password.',true);return}
+    let email=loginValue;
+    if(!loginValue.includes('@')){
+      const alias=await getDoc(doc(db,'customerUsernames',loginValue));
+      if(!alias.exists()){authStatus('Username not found. You can also sign in using your email.',true);return}
+      email=String(alias.data().email||'').trim().toLowerCase();
+      if(!email){authStatus('This username is not linked to a valid customer email.',true);return}
+    }
+    authStatus('Signing you in…');
+    await setPersistence(auth,remember?browserLocalPersistence:browserSessionPersistence);
+    const cred=await signInWithEmailAndPassword(auth,email,pw);
+    await reload(cred.user);
+    if(!cred.user.emailVerified){
+      const profileSnap=await getDoc(doc(db,'customerProfiles',cred.user.uid)).catch(()=>null);
+      const profileData=profileSnap?.exists()?profileSnap.data():{};
+      await sendVerification(cred.user,profileData).catch(()=>{});
+      await signOut(auth);
+      authStatus('Your email is not verified yet. We sent another verification link to '+email+'. Verify it first, then sign in again.',true);
+      return;
+    }
+    authStatus('Sign in successful.');
+    closeCustomerAuth();
+    setAuthBusy(false);
+    setTimeout(showCustomerLoginSuccess,120);
+  }catch(err){
+    console.error(err);
+    const code=err?.code||'';
+    const message=code==='auth/invalid-credential'?'Username/email or password is incorrect.':code==='auth/email-already-in-use'?'That email already has a STEADFAST customer account. Please use Sign in.':code==='auth/weak-password'?'Password must be at least 6 characters.':code==='auth/invalid-email'?'Please enter a valid email address.':code==='auth/operation-not-allowed'?'Email/password sign-in is disabled in Firebase. Enable Authentication → Sign-in method → Email/Password.':code==='auth/network-request-failed'?'Network error. Check your internet connection and try again.':code==='auth/too-many-requests'?'Too many attempts. Please wait a moment and try again.':(err?.message||'Account action failed.');
+    authStatus(message,true);
+  }finally{
+    if(!document.getElementById('sfAuthSubmit')?.dataset?.originalText)setAuthBusy(false);
+  }
+});
 
 function openCheckout(p){
   const user=auth.currentUser;

@@ -48,11 +48,25 @@
         <label id="sfRegisterUsernameWrap" hidden>Username<input id="sfAuthUsername" type="text" autocomplete="username" placeholder="Choose a username"></label>
         <label>Password<div class="sf-password-field"><input id="sfAuthPassword" type="password" autocomplete="current-password" minlength="6" required><button type="button" class="sf-password-toggle" data-toggle-password="sfAuthPassword" aria-label="Show password">Show</button></div></label>
         <label id="sfAuthConfirmWrap" hidden>Confirm password<div class="sf-password-field"><input id="sfAuthConfirm" type="password" autocomplete="new-password" minlength="6"><button type="button" class="sf-password-toggle" data-toggle-password="sfAuthConfirm" aria-label="Show confirm password">Show</button></div></label>
+        <label id="sfRememberWrap" class="sf-remember-row"><input id="sfRememberMe" type="checkbox"><span>Remember me</span></label>
         <label id="sfHumanCheckWrap" class="sf-human-check" hidden><input id="sfHumanCheck" type="checkbox"><span><strong>I’m not a robot</strong><small>Security check</small></span></label>
         <button class="btn primary full" id="sfAuthSubmit" type="submit">Sign in →</button>
         <div id="sfAuthStatus" class="sf-auth-status" hidden aria-live="polite"></div>
       </form>
       <div class="sf-auth-note">Email verification is required before purchasing or submitting a buyer review.</div><button class="btn ghost full" type="button" data-close-auth>Continue as guest</button>
+    </div>
+  </div>
+</div>
+<div class="sf-modal" id="sfCustomerSuccessModal" hidden>
+  <div class="sf-modal-backdrop" data-close-success></div>
+  <div class="sf-modal-card sf-success-modal-card" role="dialog" aria-modal="true" aria-labelledby="sfSuccessTitle">
+    <button class="sf-modal-close" type="button" data-close-success aria-label="Close">×</button>
+    <div class="sf-auth-success">
+      <div class="sf-success-icon">✓</div>
+      <span class="sf-work-tag">STEADFAST CUSTOMER</span>
+      <h2 id="sfSuccessTitle">You can now purchase digital products.</h2>
+      <p>Your account is signed in and ready. You can now browse the STEADFAST Store and purchase eligible digital products.</p>
+      <button class="btn primary full" type="button" data-close-success>Browse digital products →</button>
     </div>
   </div>
 </div>

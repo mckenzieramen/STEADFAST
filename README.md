@@ -89,3 +89,5 @@ The admin dashboard now uses Firebase `getAuth(app)` to attach to the existing p
 - Marking an order Paid decrements the product stock by one.
 - Added Firebase `firestore.rules` and `storage.rules` for the new collections/storage paths.
 - Payment provider secrets are intentionally kept out of the browser; the configured Payment URL is the provider checkout link.
+
+V47 custom HTML verification email files are included in this project. See README-V47-CUSTOM-VERIFICATION-EMAIL.md.

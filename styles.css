@@ -331,3 +331,15 @@ body.modal-open{overflow:hidden}
 
 /* Customer authentication security check */
 .sf-human-check{display:flex;align-items:center;gap:11px;padding:12px 14px;border:1px solid #ddd8e7;border-radius:12px;background:#faf9fd;cursor:pointer;user-select:none}.sf-human-check input{width:18px!important;height:18px!important;margin:0!important;accent-color:var(--purple);cursor:pointer}.sf-human-check span{display:flex;flex-direction:column;gap:2px}.sf-human-check strong{font-size:12px;color:#2b2732}.sf-human-check small{font-size:10px;color:#817a8c}.sf-human-check[hidden]{display:none!important}
+
+/* V48 customer sign-in improvements */
+.sf-remember-row{display:flex!important;align-items:center;gap:9px;font-size:12px!important;font-weight:700!important;color:#5d5768!important;cursor:pointer;margin-top:-2px}
+.sf-remember-row input{width:16px!important;height:16px!important;margin:0!important;accent-color:#7a43ff;cursor:pointer}
+.sf-auth-spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;vertical-align:-2px;animation:sfSpin .7s linear infinite;margin-right:7px}
+#sfAuthSubmit.is-loading{opacity:.88;cursor:wait}
+@keyframes sfSpin{to{transform:rotate(360deg)}}
+.sf-success-modal-card{width:min(520px,100%)}
+.sf-auth-success{text-align:center;padding:24px 16px 10px}
+.sf-auth-success .sf-success-icon{margin:0 auto 16px}
+.sf-auth-success h2{font:800 clamp(28px,5vw,38px)/1.08 Manrope;margin:10px 0 12px;color:#15131b}
+.sf-auth-success p{color:#697080;line-height:1.7;margin:0 auto 24px;max-width:420px}
