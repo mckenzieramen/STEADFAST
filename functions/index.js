@@ -75,6 +75,78 @@ exports.sendCustomerVerificationEmail = onCall(async (request) => {
 });
 
 
+
+exports.saveCustomerProfile = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to save a customer profile.');
+  }
+
+  const uid = String(request.auth.uid || '').trim();
+  const authEmail = String(request.auth.token.email || '').trim().toLowerCase();
+  const firstName = String(request.data?.firstName || '').trim();
+  const lastName = String(request.data?.lastName || '').trim();
+  const email = String(request.data?.email || '').trim().toLowerCase();
+  const username = String(request.data?.username || '').trim().toLowerCase();
+
+  if (!uid || !authEmail) {
+    throw new HttpsError('invalid-argument', 'Customer authentication information is incomplete.');
+  }
+
+  if (!firstName || !lastName) {
+    throw new HttpsError('invalid-argument', 'First name and last name are required.');
+  }
+
+  if (!email || !email.includes('@')) {
+    throw new HttpsError('invalid-argument', 'A valid customer email is required.');
+  }
+
+  if (email !== authEmail) {
+    throw new HttpsError('permission-denied', 'The customer email does not match the signed-in account.');
+  }
+
+  if (!/^[a-z0-9][a-z0-9._-]{2,31}$/i.test(username)) {
+    throw new HttpsError('invalid-argument', 'Invalid username. Use 3–32 letters, numbers, dots, underscores or hyphens.');
+  }
+
+  const db = admin.firestore();
+  const profileRef = db.doc(`customerProfiles/${uid}`);
+  const aliasRef = db.doc(`customerUsernames/${username}`);
+
+  try {
+    await db.runTransaction(async (tx) => {
+      const aliasSnap = await tx.get(aliasRef);
+
+      if (aliasSnap.exists) {
+        const existing = aliasSnap.data() || {};
+        if (String(existing.uid || '') !== uid) {
+          throw new HttpsError('already-exists', 'That username is already taken. Please choose another.');
+        }
+      }
+
+      tx.set(profileRef, {
+        uid,
+        firstName,
+        lastName,
+        email,
+        username,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+
+      tx.set(aliasRef, {
+        uid,
+        email,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    });
+  } catch (error) {
+    if (error instanceof HttpsError) throw error;
+    console.error('saveCustomerProfile failed:', error);
+    throw new HttpsError('internal', 'Your account was created, but the customer profile could not be saved. Please try again.');
+  }
+
+  return { ok: true, uid, username };
+});
+
 exports.verifyCustomerHuman = onCall({ secrets: [recaptchaSecret] }, async (request) => {
   const token = String(request.data?.token || '').trim();
   const secret = String(recaptchaSecret.value() || '').trim();
