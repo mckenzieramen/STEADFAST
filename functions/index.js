@@ -1,5 +1,6 @@
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2/options');
+const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 
 admin.initializeApp();
@@ -7,6 +8,7 @@ setGlobalOptions({ region: 'asia-southeast1', maxInstances: 10 });
 
 const BRIDGE_URL = process.env.STEADFAST_GMAIL_BRIDGE_URL || '';
 const CONTINUE_URL = 'https://steadfast-cliffjandee.pages.dev/store.html?verified=1';
+const recaptchaSecret = defineSecret('RECAPTCHA_SECRET_KEY');
 
 exports.sendCustomerVerificationEmail = onCall(async (request) => {
   if (!request.auth) {
@@ -73,27 +75,46 @@ exports.sendCustomerVerificationEmail = onCall(async (request) => {
 });
 
 
-exports.verifyCustomerHuman = onCall(async (request) => {
+exports.verifyCustomerHuman = onCall({ secrets: [recaptchaSecret] }, async (request) => {
   const token = String(request.data?.token || '').trim();
-  const secret = String(process.env.RECAPTCHA_SECRET_KEY || '').trim();
+  const secret = String(recaptchaSecret.value() || '').trim();
 
   if (!token) {
     throw new HttpsError('invalid-argument', 'reCAPTCHA token is required.');
   }
   if (!secret) {
-    throw new HttpsError('failed-precondition', 'reCAPTCHA secret key is not configured.');
+    throw new HttpsError('failed-precondition', 'The STEADFAST reCAPTCHA server key is not configured.');
   }
 
-  const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-    body: new URLSearchParams({ secret, response: token })
-  });
+  let result;
+  try {
+    const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: new URLSearchParams({ secret, response: token })
+    });
+    result = await response.json();
+  } catch (error) {
+    console.error('reCAPTCHA Google verification request failed:', error);
+    throw new HttpsError('unavailable', 'The reCAPTCHA verification service could not be reached. Please try again.');
+  }
 
-  const result = await response.json();
   if (!result.success) {
-    console.error('reCAPTCHA verification failed:', result['error-codes'] || result);
-    throw new HttpsError('permission-denied', 'Human verification failed.');
+    const codes = Array.isArray(result['error-codes']) ? result['error-codes'] : [];
+    console.error('reCAPTCHA verification failed:', codes.length ? codes : result);
+    const code = codes[0] || 'unknown-error';
+    const messages = {
+      'timeout-or-duplicate': 'The reCAPTCHA verification expired or was already used. Please check “I’m not a robot” again and submit immediately.',
+      'invalid-input-secret': 'The reCAPTCHA server secret is invalid. Update RECAPTCHA_SECRET_KEY in Firebase Functions.',
+      'invalid-input-response': 'The reCAPTCHA response was invalid. Please check “I’m not a robot” again.',
+      'bad-request': 'Google rejected the reCAPTCHA verification request. Please try again.'
+    };
+    throw new HttpsError('permission-denied', messages[code] || `Google reCAPTCHA verification failed (${code}).`);
+  }
+
+  if (result.hostname && result.hostname !== 'steadfast-cliffjandee.pages.dev') {
+    console.error('Unexpected reCAPTCHA hostname:', result.hostname);
+    throw new HttpsError('permission-denied', `reCAPTCHA hostname mismatch: ${result.hostname}`);
   }
 
   return { ok: true };
