@@ -43,8 +43,8 @@
       </div>
       <form id="sfCustomerAuthForm" class="form-like">
         <label>Email<input id="sfAuthEmail" type="email" autocomplete="email" required></label>
-        <label>Password<input id="sfAuthPassword" type="password" autocomplete="current-password" minlength="6" required></label>
-        <label id="sfAuthConfirmWrap" hidden>Confirm password<input id="sfAuthConfirm" type="password" autocomplete="new-password" minlength="6"></label>
+        <label>Password<div class="sf-password-field"><input id="sfAuthPassword" type="password" autocomplete="current-password" minlength="6" required><button type="button" class="sf-password-toggle" data-toggle-password="sfAuthPassword" aria-label="Show password">Show</button></div></label>
+        <label id="sfAuthConfirmWrap" hidden>Confirm password<div class="sf-password-field"><input id="sfAuthConfirm" type="password" autocomplete="new-password" minlength="6"><button type="button" class="sf-password-toggle" data-toggle-password="sfAuthConfirm" aria-label="Show confirm password">Show</button></div></label>
         <button class="btn primary full" id="sfAuthSubmit" type="submit">Sign in →</button>
         <div id="sfAuthStatus" class="sf-auth-status" hidden aria-live="polite"></div>
       </form>

@@ -319,3 +319,9 @@ body.modal-open{overflow:hidden}
 .sf-store-account-copy{display:grid;gap:5px}.sf-store-account-copy .eyebrow{font-size:9px;margin:0}.sf-store-account-copy strong{font:800 18px Manrope;color:#19161f}.sf-store-account-copy>span:last-child{font-size:12px;color:#727080;line-height:1.5}.sf-store-account-actions{display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}.sf-store-account-actions .btn{min-width:125px}
 .sf-auth-modal-card{width:min(540px,100%)}.sf-auth-modal-copy{padding:20px 10px 6px}.sf-auth-modal-copy h2{font:800 clamp(30px,5vw,44px)/1.05 Manrope;margin:10px 0}.sf-auth-modal-copy p{color:#697080;line-height:1.65}.sf-auth-tabs{display:flex;gap:6px;padding:5px;background:#f5f2fa;border-radius:12px;margin:20px 0 16px}.sf-auth-tabs button{flex:1;border:0;background:transparent;border-radius:9px;padding:11px 10px;font-weight:800;color:#716a7c;cursor:pointer}.sf-auth-tabs button.active{background:#fff;color:#4e22a5;box-shadow:0 3px 12px rgba(18,10,38,.08)}.sf-auth-status{padding:10px 12px;border-radius:10px;background:#f5f0ff;color:#5425a9;font-size:12px}.sf-auth-status.error{background:#fff0f1;color:#a02b36}
 @media(max-width:700px){.sf-store-account-bar{display:grid}.sf-store-account-actions{justify-content:stretch}.sf-store-account-actions .btn{flex:1}.sf-auth-modal-copy{padding:12px 0}}
+
+/* Customer authentication: password visibility control */
+.sf-password-field{position:relative;display:flex;align-items:center}
+.sf-password-field input{width:100%;padding-right:68px}
+.sf-password-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:inherit;opacity:.7;font:inherit;font-size:.78rem;font-weight:700;cursor:pointer;padding:6px 8px}
+.sf-password-toggle:hover{opacity:1}
