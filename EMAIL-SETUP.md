@@ -44,3 +44,7 @@ If the customer does not receive the email, first check the Apps Script **Execut
 The checkout now sends HTML payment-submitted and payment-verified emails through the same Google Apps Script Gmail bridge. After changing `STEADFAST-GMAIL-BRIDGE.gs`, redeploy the Apps Script Web App using the same URL in `email-config.js`.
 
 MariBank / QR: the admin can save a provider-supported payment link template. `{amount}` is replaced with the fixed product amount and `{order}` with the order ID. The QR is generated from the resulting link. A QR Ph-compatible QR can be scanned by supported banking apps; the website does not claim to verify a bank transfer by itself.
+
+
+### Customer Email Verification
+Customer registration uses Firebase Authentication's built-in email verification. The Store calls `sendEmailVerification()` immediately after account creation. The customer is signed out until the email is verified. On sign-in, the Store checks `emailVerified`; unverified users are blocked and sent another verification email. To customize the HTML verification email, open Firebase Console → Authentication → Templates → Email address verification and customize the subject/body/action branding.

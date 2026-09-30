@@ -18,6 +18,7 @@ service cloud.firestore {
 
     match /storeOrders/{id} {
       allow create: if request.auth != null
+        && request.auth.token.email_verified == true
         && request.resource.data.customerUid == request.auth.uid
         && request.resource.data.status == 'pending'
         && request.resource.data.amount >= 0
@@ -27,6 +28,7 @@ service cloud.firestore {
 
     match /storeCheckout/{id} {
       allow create: if request.auth != null
+        && request.auth.token.email_verified == true
         && request.resource.data.customerUid == request.auth.uid
         && request.resource.data.status == 'pending'
         && request.resource.data.amount >= 0
@@ -53,6 +55,7 @@ service cloud.firestore {
     match /productReviews/{id} {
       allow read: if true;
       allow create: if request.auth != null
+        && request.auth.token.email_verified == true
         && request.resource.data.userId == request.auth.uid
         && request.resource.data.published == true
         && request.resource.data.productId is string
