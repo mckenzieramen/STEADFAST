@@ -229,13 +229,47 @@ exports.registerCustomer = onCall({ secrets: [recaptchaSecret] }, async (request
   }
 
   const profileRef = db.doc(`customerProfiles/${userRecord.uid}`);
+
+  // Persist the customer account/profile first. Admin SDK bypasses browser
+  // Firestore rules, so registration cannot be blocked by client permissions.
   try {
     const now = admin.firestore.FieldValue.serverTimestamp();
     await db.runTransaction(async tx => {
-      tx.set(profileRef, { uid: userRecord.uid, firstName, lastName, email, username, createdAt: now });
-      tx.set(usernameRef, { email, uid: userRecord.uid, createdAt: now });
+      tx.set(profileRef, {
+        uid: userRecord.uid,
+        firstName,
+        lastName,
+        email,
+        username,
+        createdAt: now,
+        updatedAt: now
+      }, { merge: true });
+      tx.set(usernameRef, {
+        email,
+        uid: userRecord.uid,
+        createdAt: now,
+        updatedAt: now
+      }, { merge: true });
+      tx.set(db.doc(`customerRegistrations/${userRecord.uid}`), {
+        uid: userRecord.uid,
+        email,
+        username,
+        firstName,
+        lastName,
+        status: 'pending_verification',
+        verificationEmailSent: false,
+        updatedAt: now
+      }, { merge: true });
     });
+  } catch (error) {
+    console.error('registerCustomer profile storage failed:', error);
+    try { await admin.auth().deleteUser(userRecord.uid); } catch (_) {}
+    throw new HttpsError('internal', 'The customer account could not be saved. Please try again.');
+  }
 
+  // Sending the email is a separate step. Never delete the account/profile
+  // if the Gmail bridge is temporarily unavailable.
+  try {
     if (!BRIDGE_URL) throw new Error('STEADFAST Gmail Bridge URL is not configured.');
     const verificationUrl = await admin.auth().generateEmailVerificationLink(email, {
       url: CONTINUE_URL,
@@ -259,21 +293,34 @@ exports.registerCustomer = onCall({ secrets: [recaptchaSecret] }, async (request
     if (!response.ok || !bridgeResult.ok) {
       throw new Error(bridgeResult.error || 'The verification email could not be sent.');
     }
+
+    await db.doc(`customerRegistrations/${userRecord.uid}`).set({
+      status: 'pending_verification',
+      verificationEmailSent: true,
+      verificationError: '',
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
+    return { ok: true, email, username, verificationSent: true, verificationRequired: true };
   } catch (error) {
-    // The Auth account and customer profile are already valid at this point.
-    // Do NOT delete them just because the verification-mail bridge failed.
     console.error('registerCustomer verification email failed:', error);
+    await db.doc(`customerRegistrations/${userRecord.uid}`).set({
+      status: 'pending_verification',
+      verificationEmailSent: false,
+      verificationError: String(error?.message || 'Verification email could not be sent.'),
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+
     return {
       ok: true,
       email,
       username,
-      emailSent: false,
-      emailError: error?.message || 'The verification email could not be sent automatically.'
+      verificationSent: false,
+      verificationRequired: true,
+      verificationError: String(error?.message || 'Verification email could not be sent.')
     };
   }
-
-  return { ok: true, email, username, emailSent: true };
-});
+}
 
 exports.verifyCustomerHuman = onCall({ secrets: [recaptchaSecret] }, async (request) => {
   const token = String(request.data?.token || '').trim();
