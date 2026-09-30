@@ -22,6 +22,7 @@ function productCard(p){const stock=Math.max(0,Number(p.stock||0)),out=stock<1;r
 function preview(p){const body=document.getElementById('sfPreviewBody');if(!body)return;const list=imgs(p);body.innerHTML=`<div class="sf-preview-modal-content"><div><div class="sf-product-preview-large" id="previewMain">${mainPreview(p)}</div>${list.length>1?`<div class="sf-preview-gallery">${list.map((x,i)=>`<button type="button" data-gallery="${i}"><img src="${esc(x)}" alt="Preview ${i+1}"></button>`).join('')}</div>`:''}</div><div class="sf-preview-modal-copy"><span class="sf-work-tag">DIGITAL PRODUCT</span><h2>${esc(p.name)}</h2><p>${esc(p.description||'')}</p><div class="sf-checkout-price"><span>Fixed price</span><strong>${money(p.price,p.currency||'PHP')}</strong></div><button class="btn primary full" type="button" data-buy="${esc(p.id)}" ${Number(p.stock||0)<1?'disabled':''}>${Number(p.stock||0)<1?'Sold Out':'Buy to Unlock'} <span>→</span></button></div></div>`;document.getElementById('sfPreviewModal').hidden=false;activateLiveFallbacks(body);body.querySelectorAll('[data-gallery]').forEach(b=>b.addEventListener('click',()=>{const i=Number(b.dataset.gallery),m=document.getElementById('previewMain');if(m&&list[i])m.innerHTML=`<img src="${esc(list[i])}" alt="Preview ${i+1}">`}));body.querySelector('[data-buy]')?.addEventListener('click',()=>openCheckout(p));}
 let authMode='login';
 function authStatus(text,error=false){const el=document.getElementById('sfAuthStatus');if(!el)return;el.textContent=text;el.hidden=false;el.classList.toggle('error',error)}
+function showVerificationSent(email){const el=document.getElementById('sfAuthStatus');if(!el)return;el.innerHTML=`<strong>Account created successfully.</strong><br><br>1. Open Gmail and find the STEADFAST verification email.<br>2. Click <strong>VERIFY MY EMAIL</strong>.<br>3. You will be returned to STEADFAST and can sign in with your username or email.<br><br><button type="button" class="btn ghost full" id="sfOpenGmail">Open Gmail →</button>`;el.hidden=false;el.classList.remove('error');document.getElementById('sfOpenGmail')?.addEventListener('click',()=>window.location.href='https://mail.google.com/mail/u/0/#inbox');}
 function setAuthBusy(busy){const btn=document.getElementById('sfAuthSubmit');if(!btn)return;btn.disabled=busy;btn.classList.toggle('is-loading',busy);btn.dataset.originalText=btn.dataset.originalText||btn.textContent;if(busy){btn.innerHTML='<span class="sf-auth-spinner" aria-hidden="true"></span> Please wait…';}else{btn.textContent=btn.dataset.originalText;delete btn.dataset.originalText;}}
 function showCustomerLoginSuccess(){const modal=document.getElementById('sfCustomerSuccessModal');if(!modal)return;modal.hidden=false;document.body.classList.add('modal-open');}
 function closeCustomerLoginSuccess(){const modal=document.getElementById('sfCustomerSuccessModal');if(modal)modal.hidden=true;if(!document.querySelector('.sf-modal:not([hidden])'))document.body.classList.remove('modal-open');}
@@ -75,8 +76,18 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
       const captchaToken=getCustomerRecaptchaToken();
       if(!captchaToken){authStatus('Please complete the “I’m not a robot” verification.',true);return}
       authStatus('Verifying that you are not a robot…');
-      const humanResult=await verifyCustomerHuman({token:captchaToken});
-      if(!humanResult?.data?.ok){resetCustomerRecaptcha();authStatus('Human verification failed. Please try again.',true);return}
+      try{
+        const humanResult=await Promise.race([
+          verifyCustomerHuman({token:captchaToken}),
+          new Promise((_,reject)=>setTimeout(()=>reject(new Error('reCAPTCHA verification timed out. Please check the box again.')),15000))
+        ]);
+        if(!humanResult?.data?.ok)throw new Error('reCAPTCHA verification failed. Please check the “I’m not a robot” box again.');
+      }catch(captchaErr){
+        resetCustomerRecaptcha();
+        authStatus('reCAPTCHA expired or could not be verified. Please check “I’m not a robot” again, then submit.',true);
+        showSystemError('Security verification failed.',captchaErr?.message||'Please complete the reCAPTCHA again.');
+        return;
+      }
       authStatus('Creating your STEADFAST account…');
       if(auth.currentUser)await signOut(auth);
       const aliasRef=doc(db,'customerUsernames',username);
@@ -89,10 +100,10 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
       await signOut(auth);
       resetCustomerRecaptcha();
       setAuthBusy(false);
-      authStatus('Verification email sent. Please check your Gmail/email and click VERIFY MY EMAIL to activate your account.',false);
       document.getElementById('sfAuthTitle').textContent='Verify your email first.';
-      document.getElementById('sfAuthIntro').textContent='Your account is created. Verify the email we sent you, then return here and sign in using your username or email and password.';
+      document.getElementById('sfAuthIntro').textContent='Your account is created. We sent a verification link to your email. Open Gmail, click VERIFY MY EMAIL, then return here to sign in.';
       document.getElementById('sfAuthSubmit').textContent='Sign in →';
+      showVerificationSent(email);
       return;
     }
 
@@ -124,13 +135,14 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
     console.error(err);
     if(authMode==='register')resetCustomerRecaptcha();
     const code=err?.code||'';
-    const message=code==='auth/invalid-credential'?'Username/email or password is incorrect.':code==='auth/email-already-in-use'?'That email already has a STEADFAST customer account. Please use Sign in.':code==='auth/weak-password'?'Password must be at least 6 characters.':code==='auth/invalid-email'?'Please enter a valid email address.':code==='auth/operation-not-allowed'?'Email/password sign-in is disabled in Firebase. Enable Authentication → Sign-in method → Email/Password.':code==='auth/network-request-failed'?'Network error. Check your internet connection and try again.':code==='auth/too-many-requests'?'Too many attempts. Please wait a moment and try again.':(code==='functions/internal'||code==='functions/unknown'||String(err?.message||'').toLowerCase().includes('internal'))?'The security verification service could not complete. Please make sure the STEADFAST reCAPTCHA secret key is configured in Firebase Functions, then try again.':(err?.message||'Account action failed.');
+    const rawMessage=String(err?.message||'');
+    const message=code==='auth/invalid-credential'?'Username/email or password is incorrect.':code==='auth/email-already-in-use'?'That email already has a STEADFAST customer account. Please use Sign in.':code==='auth/weak-password'?'Password must be at least 6 characters.':code==='auth/invalid-email'?'Please enter a valid email address.':code==='auth/operation-not-allowed'?'Email/password sign-in is disabled in Firebase. Enable Authentication → Sign-in method → Email/Password.':code==='auth/network-request-failed'?'Network error. Check your internet connection and try again.':code==='functions/failed-precondition'?'STEADFAST verification email service is not configured yet. Please contact the site administrator.':code==='functions/internal'?'STEADFAST could not send the verification email. Please try again.':code==='functions/permission-denied'?'reCAPTCHA verification failed or expired. Please check “I’m not a robot” again.':code==='auth/too-many-requests'?'Too many attempts. Please wait a moment and try again.':(rawMessage.toLowerCase().includes('internal')?'A STEADFAST service could not complete the request. Please try again.':(rawMessage||'Account action failed.'));
     authStatus(message,true);
-    if(authMode==='register' && (code==='functions/internal'||code==='functions/unknown'||String(err?.message||'').toLowerCase().includes('internal'))){
+    if(authMode==='register' && String(code).startsWith('functions/')){
       showSystemError('Security verification could not be completed.',message);
     }
   }finally{
-    if(!document.getElementById('sfAuthSubmit')?.dataset?.originalText)setAuthBusy(false);
+    setAuthBusy(false);
   }
 });
 
