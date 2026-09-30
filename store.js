@@ -3,7 +3,7 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
 import { getFirestore, collection, addDoc, setDoc, getDoc, doc, serverTimestamp, onSnapshot, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 const firebaseConfig={apiKey:"AIzaSyD13MXR0ZQSjPJBxQKYPmsMKjl4yzU2hSs",authDomain:"steadfast-1d0e6.firebaseapp.com",projectId:"steadfast-1d0e6",storageBucket:"steadfast-1d0e6.firebasestorage.app",messagingSenderId:"488385339804",appId:"1:488385339804:web:0d2bcf3967a8f95ccfe859"};
-const customerApp=getApps().find(a=>a.name==="steadfastCustomer")||initializeApp(firebaseConfig,"steadfastCustomer"),db=getFirestore(customerApp),auth=getAuth(customerApp),functions=getFunctions(customerApp,"asia-southeast1"),sendCustomVerificationEmail=httpsCallable(functions,"sendCustomerVerificationEmail"),verifyCustomerHuman=httpsCallable(functions,"verifyCustomerHuman"),saveCustomerProfile=httpsCallable(functions,"saveCustomerProfile");
+const customerApp=getApps().find(a=>a.name==="steadfastCustomer")||initializeApp(firebaseConfig,"steadfastCustomer"),db=getFirestore(customerApp),auth=getAuth(customerApp),functions=getFunctions(customerApp,"asia-southeast1"),sendCustomVerificationEmail=httpsCallable(functions,"sendCustomerVerificationEmail"),registerCustomer=httpsCallable(functions,"registerCustomer");
 let recaptchaWidgetId=null;
 function renderCustomerRecaptcha(){return new Promise((resolve,reject)=>{const el=document.getElementById("sfRecaptcha");if(!el)return reject(new Error("Human verification is unavailable."));const key=window.STEADFAST_RECAPTCHA_SITE_KEY||el.dataset.sitekey||"";if(!key||key.startsWith("REPLACE_WITH_"))return reject(new Error("reCAPTCHA is not configured yet. Add the STEADFAST reCAPTCHA v2 site key."));const run=()=>{try{if(window.grecaptcha){if(recaptchaWidgetId!==null){try{window.grecaptcha.reset(recaptchaWidgetId)}catch(_){}} recaptchaWidgetId=window.grecaptcha.render(el,{sitekey:key,callback:()=>{const st=document.getElementById("sfAuthStatus");if(st&&st.classList.contains("error")&&/reCAPTCHA|robot|verification/i.test(st.textContent||""))st.hidden=true;},"expired-callback":()=>{resetCustomerRecaptcha();authStatus("Your reCAPTCHA verification expired. Please check “I’m not a robot” again.",true);},"error-callback":()=>{authStatus("reCAPTCHA could not be verified. Please check “I’m not a robot” again.",true);}});resolve(recaptchaWidgetId);return}reject(new Error("reCAPTCHA is still loading. Please wait a moment and try again."));}catch(e){reject(e)}};if(window.grecaptcha)run();else{let tries=0;const timer=setInterval(()=>{tries++;if(window.grecaptcha){clearInterval(timer);run()}else if(tries>50){clearInterval(timer);reject(new Error("reCAPTCHA could not load."))}},100)}})}
 function getCustomerRecaptchaToken(){if(recaptchaWidgetId===null||!window.grecaptcha)return "";return window.grecaptcha.getResponse(recaptchaWidgetId)||""}
@@ -75,53 +75,30 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
       }
       const captchaToken=getCustomerRecaptchaToken();
       if(!captchaToken){authStatus('Please complete the “I’m not a robot” verification.',true);return}
-      authStatus('Verifying that you are not a robot…');
+      authStatus('Creating your STEADFAST account…');
       try{
-        const humanResult=await Promise.race([
-          verifyCustomerHuman({token:captchaToken}),
-          new Promise((_,reject)=>setTimeout(()=>reject(new Error('reCAPTCHA verification timed out. Please check the box again.')),15000))
+        const result=await Promise.race([
+          registerCustomer({firstName:first,lastName:last,email,username,password:pw,recaptchaToken:captchaToken}),
+          new Promise((_,reject)=>setTimeout(()=>reject(new Error('Account creation timed out. Please try again.')),30000))
         ]);
-        if(!humanResult?.data?.ok)throw new Error('reCAPTCHA verification failed. Please check the “I’m not a robot” box again.');
-      }catch(captchaErr){
+        if(!result?.data?.ok)throw new Error(result?.data?.message||'The account could not be created.');
         resetCustomerRecaptcha();
-        const captchaCode=String(captchaErr?.code||'');
-        const captchaRaw=String(captchaErr?.message||'');
-        const captchaMessage=captchaCode==='functions/failed-precondition'?'The reCAPTCHA server key is not configured in Firebase Functions.':captchaCode==='functions/unavailable'?'The reCAPTCHA verification service is temporarily unavailable. Please try again.':captchaCode==='functions/permission-denied'?(captchaRaw||'The reCAPTCHA verification was rejected by Google. Please check “I’m not a robot” again.'):captchaRaw||'Please complete the reCAPTCHA again.';
-        authStatus(captchaMessage,true);
-        showSystemError('Security verification failed.',captchaMessage);
+        setAuthBusy(false);
+        document.getElementById('sfAuthTitle').textContent='Verify your email first.';
+        document.getElementById('sfAuthIntro').textContent='Your account is created. We sent a verification link to your Gmail/email. Open Gmail, click VERIFY MY EMAIL, then return here to sign in.';
+        document.getElementById('sfAuthSubmit').textContent='Sign in →';
+        showVerificationSent(email);
+        return;
+      }catch(regErr){
+        console.error('Customer registration failed:',regErr);
+        resetCustomerRecaptcha();
+        const code=String(regErr?.code||'');
+        const raw=String(regErr?.message||'');
+        const msg=code==='functions/failed-precondition'?'STEADFAST reCAPTCHA server configuration is missing. Please deploy the latest Firebase Functions and configure RECAPTCHA_SECRET_KEY.':code==='functions/permission-denied'?(raw||'Google rejected the reCAPTCHA verification. Please check “I’m not a robot” again.'):code==='functions/already-exists'?'That email or username is already registered. Please use Sign in or choose another username.':code==='functions/invalid-argument'?(raw||'Please check the registration details and try again.'):code==='functions/unavailable'?'The account service is temporarily unavailable. Please try again.':raw||'The account could not be created.';
+        authStatus(msg,true);
+        showSystemError('Account creation failed.',msg);
         return;
       }
-      authStatus('Creating your STEADFAST account…');
-      if(auth.currentUser)await signOut(auth);
-
-      const aliasRef=doc(db,'customerUsernames',username);
-      const aliasSnap=await getDoc(aliasRef);
-      if(aliasSnap.exists()){authStatus('That username is already taken. Please choose another.',true);return}
-
-      const cred=await createUserWithEmailAndPassword(auth,email,pw);
-
-      try{
-        await saveCustomerProfile({
-          firstName:first,
-          lastName:last,
-          email,
-          username
-        });
-      }catch(profileErr){
-        console.error('Customer profile save failed:',profileErr);
-        try{await cred.user.delete();}catch(_){}
-        throw profileErr;
-      }
-
-      await sendVerification(cred.user,{firstName:first,lastName:last});
-      await signOut(auth);
-      resetCustomerRecaptcha();
-      setAuthBusy(false);
-      document.getElementById('sfAuthTitle').textContent='Verify your email first.';
-      document.getElementById('sfAuthIntro').textContent='Your account is created. We sent a verification link to your email. Open Gmail, click VERIFY MY EMAIL, then return here to sign in.';
-      document.getElementById('sfAuthSubmit').textContent='Sign in →';
-      showVerificationSent(email);
-      return;
     }
 
     const loginValue=document.getElementById('sfAuthEmail').value.trim().toLowerCase();
