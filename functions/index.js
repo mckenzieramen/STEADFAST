@@ -71,3 +71,30 @@ exports.sendCustomerVerificationEmail = onCall(async (request) => {
 
   return { ok: true, sent: true };
 });
+
+
+exports.verifyCustomerHuman = onCall(async (request) => {
+  const token = String(request.data?.token || '').trim();
+  const secret = String(process.env.RECAPTCHA_SECRET_KEY || '').trim();
+
+  if (!token) {
+    throw new HttpsError('invalid-argument', 'reCAPTCHA token is required.');
+  }
+  if (!secret) {
+    throw new HttpsError('failed-precondition', 'reCAPTCHA secret key is not configured.');
+  }
+
+  const response = await fetch('https://www.google.com/recaptcha/api/siteverify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+    body: new URLSearchParams({ secret, response: token })
+  });
+
+  const result = await response.json();
+  if (!result.success) {
+    console.error('reCAPTCHA verification failed:', result['error-codes'] || result);
+    throw new HttpsError('permission-denied', 'Human verification failed.');
+  }
+
+  return { ok: true };
+});
