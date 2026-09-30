@@ -325,3 +325,6 @@ body.modal-open{overflow:hidden}
 .sf-password-field input{width:100%;padding-right:68px}
 .sf-password-toggle{position:absolute;right:8px;top:50%;transform:translateY(-50%);border:0;background:transparent;color:inherit;opacity:.7;font:inherit;font-size:.78rem;font-weight:700;cursor:pointer;padding:6px 8px}
 .sf-password-toggle:hover{opacity:1}
+
+.sf-auth-modal-card{overflow:visible}.sf-auth-modal-card .sf-modal-close{position:sticky;float:right;top:0;right:0;z-index:5;margin:-4px -4px 0 0}.sf-register-name-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.sf-register-name-grid[hidden]{display:none!important}.sf-auth-modal-copy label{font-size:11px;font-weight:800;color:#474150}.sf-auth-modal-copy input{display:block;width:100%;margin-top:6px;border:1px solid #ddd8e7;border-radius:11px;padding:12px 13px;outline:0}.sf-auth-modal-copy input:focus{border-color:var(--purple)}
+@media(max-width:560px){.sf-register-name-grid{grid-template-columns:1fr}.sf-auth-modal-card .sf-modal-close{position:sticky}}

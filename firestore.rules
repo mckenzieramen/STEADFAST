@@ -110,6 +110,34 @@ service cloud.firestore {
     }
 
     // =====================================================
+    // CUSTOMER PROFILES / USERNAMES
+    // =====================================================
+
+    // The username alias is intentionally limited to the minimum
+    // fields needed to resolve username -> email during sign in.
+    match /customerUsernames/{username} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email;
+      allow update, delete: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+    }
+
+    match /customerProfiles/{uid} {
+      allow read: if isAdmin()
+        || (request.auth != null && request.auth.uid == uid);
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email;
+      allow update: if request.auth != null
+        && request.auth.uid == uid;
+      allow delete: if isAdmin()
+        || (request.auth != null && request.auth.uid == uid);
+    }
+
+    // =====================================================
     // CUSTOMER PURCHASE ACCESS
     // =====================================================
 
