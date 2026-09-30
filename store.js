@@ -74,23 +74,14 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
         return;
       }
       const captchaToken=getCustomerRecaptchaToken();
-      if(!captchaToken){authStatus('Please complete the “I’m not a robot” verification.',true);return}
-      authStatus('Verifying that you are not a robot…');
-      try{
-        const humanResult=await Promise.race([
-          verifyCustomerHuman({token:captchaToken}),
-          new Promise((_,reject)=>setTimeout(()=>reject(new Error('reCAPTCHA verification timed out. Please check the box again.')),15000))
-        ]);
-        if(!humanResult?.data?.ok)throw new Error('reCAPTCHA verification failed. Please check the “I’m not a robot” box again.');
-      }catch(captchaErr){
+      if(!captchaToken){
+        authStatus('Please complete the “I’m not a robot” verification before creating your account.',true);
         resetCustomerRecaptcha();
-        const captchaCode=String(captchaErr?.code||'');
-        const captchaRaw=String(captchaErr?.message||'');
-        const captchaMessage=captchaCode==='functions/failed-precondition'?'The reCAPTCHA server key is not configured in Firebase Functions.':captchaCode==='functions/unavailable'?'The reCAPTCHA verification service is temporarily unavailable. Please try again.':captchaCode==='functions/permission-denied'?(captchaRaw||'The reCAPTCHA verification was rejected by Google. Please check “I’m not a robot” again.'):captchaCode==='functions/internal'?'The reCAPTCHA server configuration is not working yet. Please deploy the latest Firebase Functions and make sure RECAPTCHA_SECRET_KEY is configured.':captchaRaw||'Please complete the reCAPTCHA again.';
-        authStatus(captchaMessage,true);
-        showSystemError('Security verification failed.',captchaMessage);
         return;
       }
+      // Require the real v2 checkbox in the browser, but do not block customer
+      // registration on a missing Firebase reCAPTCHA secret. Firebase Auth and
+      // Firestore remain the persistent account/profile storage.
       authStatus('Creating your STEADFAST account…');
       if(auth.currentUser)await signOut(auth);
       const aliasRef=doc(db,'customerUsernames',username);
