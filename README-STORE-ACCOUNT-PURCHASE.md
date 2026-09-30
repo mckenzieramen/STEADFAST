@@ -13,3 +13,9 @@
 
 ## Firebase
 Enable **Authentication > Sign-in method > Email/Password**. Publish the included `firestore.rules`.
+
+## Customer authentication isolation
+
+The public Store and Reviews use a separate named Firebase client app (`steadfastCustomer`) for customer Authentication and Firestore access. The Admin portal continues using the default Firebase app. This prevents an Admin login in `/admin/` from automatically appearing as a customer login on the public Store/Reviews pages in the same browser.
+
+Customers can independently create an account or sign in from the Store. The customer session is only used for customer purchasing/review permissions.
