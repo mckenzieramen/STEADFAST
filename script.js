@@ -383,39 +383,7 @@
     if (d.open) $$('details').filter(x => x !== d).forEach(x => x.removeAttribute('open'));
   }));
 
-  // ---------- Reviews ----------
-  const list = $('#reviewList');
-  if (list) {
-    const stored = JSON.parse(localStorage.getItem('steadfastReviews') || '[]');
-    const reviews = [...stored];
-    let selectedRating = 0;
-    const esc = s => String(s || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
-    const initials = n => String(n).trim().split(/\s+/).map(x => x[0]).join('').slice(0,2).toUpperCase() || 'CL';
-    const render = () => {
-      list.innerHTML = reviews.length ? reviews.map(r => `<article class="review-card"><div class="stars">${'★'.repeat(r.rating)}${'☆'.repeat(5-r.rating)}</div><p>“${esc(r.msg || 'No written comment provided.')}”</p><div class="review-author"><div class="avatar">${initials(r.name)}</div><div><strong>${esc(r.name)}</strong><small>${esc(r.role || 'Client')} · ${esc(r.date || 'Today')}</small></div></div></article>`).join('') : '<div class="empty-reviews"><div>★</div><h3>Your first review can go here.</h3><p>Once a real client submits feedback, it will appear in this section.</p></div>';
-      const count = reviews.length;
-      if ($('#reviewCount')) $('#reviewCount').textContent = count;
-      if ($('#ratingAverage')) $('#ratingAverage').textContent = count ? (reviews.reduce((a,b)=>a+b.rating,0)/count).toFixed(1) : '—';
-      for (let s=1; s<=5; s++) {
-        const c = reviews.filter(r=>r.rating===s).length, p = count ? Math.round(c/count*100) : 0;
-        if ($('#bar'+s)) $('#bar'+s).style.width = p+'%';
-        if ($('#pct'+s)) $('#pct'+s).textContent = p+'%';
-      }
-    };
-    render();
-    $$('.star-picker button').forEach(btn => btn.addEventListener('click', () => {
-      selectedRating = Number(btn.dataset.star);
-      $$('.star-picker button').forEach(b => b.textContent = Number(b.dataset.star) <= selectedRating ? '★' : '☆');
-    }));
-    const rf = $('#reviewForm');
-    if (rf) rf.addEventListener('submit', e => {
-      e.preventDefault();
-      if (!selectedRating) { toast('Please choose a star rating first.'); return; }
-      const review = { name: $('#reviewName').value.trim(), role: $('#reviewRole').value.trim() || 'Client', date: new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}), rating:selectedRating, msg:$('#reviewMessage').value.trim() || 'Great experience working with STEADFAST.' };
-      stored.push(review); localStorage.setItem('steadfastReviews', JSON.stringify(stored)); reviews.push(review); render(); rf.reset(); selectedRating=0; $$('.star-picker button').forEach(b=>b.textContent='☆'); toast('Thank you! Your review was added in this browser.');
-    });
-  }
-
+  // ---------- Reviews: handled by reviews-firebase.js ----------
   // ---------- Project gallery lightbox ----------
   const shots = $$('.case-shot');
   if (shots.length) {
