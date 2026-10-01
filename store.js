@@ -3,9 +3,21 @@ import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWith
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
 import { getFirestore, collection, addDoc, setDoc, getDoc, doc, serverTimestamp, onSnapshot, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 const firebaseConfig={apiKey:"AIzaSyD13MXR0ZQSjPJBxQKYPmsMKjl4yzU2hSs",authDomain:"steadfast-1d0e6.firebaseapp.com",projectId:"steadfast-1d0e6",storageBucket:"steadfast-1d0e6.firebasestorage.app",messagingSenderId:"488385339804",appId:"1:488385339804:web:0d2bcf3967a8f95ccfe859"};
-const customerApp=getApps().find(a=>a.name==="steadfastCustomer")||initializeApp(firebaseConfig,"steadfastCustomer"),db=getFirestore(customerApp),auth=getAuth(customerApp),functions=getFunctions(customerApp,"asia-southeast1"),sendCustomVerificationEmail=httpsCallable(functions,"sendCustomerVerificationEmail"),registerCustomer=httpsCallable(functions,"registerCustomer");
+const customerApp=getApps().find(a=>a.name==="steadfastCustomer")||initializeApp(firebaseConfig,"steadfastCustomer"),db=getFirestore(customerApp),auth=getAuth(customerApp),functions=getFunctions(customerApp,"asia-southeast1"),sendCustomVerificationEmail=httpsCallable(functions,"sendCustomerVerificationEmail");
+const REGISTER_CUSTOMER_URL="https://asia-southeast1-steadfast-1d0e6.cloudfunctions.net/registerCustomer";
+async function registerCustomer(payload){
+  const response=await fetch(REGISTER_CUSTOMER_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  let data={};
+  try{data=await response.json();}catch(_){data={ok:false,code:"internal",message:"The account service returned an invalid response."};}
+  if(!response.ok||!data.ok){
+    const err=new Error(data.message||"The account could not be created.");
+    err.code=`functions/${data.code||"internal"}`;
+    throw err;
+  }
+  return {data};
+}
 let recaptchaWidgetId=null;
-function renderCustomerRecaptcha(){return new Promise((resolve,reject)=>{const el=document.getElementById("sfRecaptcha");if(!el)return reject(new Error("Human verification is unavailable."));const key=window.STEADFAST_RECAPTCHA_SITE_KEY||el.dataset.sitekey||"";if(!key||key.startsWith("REPLACE_WITH_"))return reject(new Error("reCAPTCHA is not configured yet. Add the STEADFAST reCAPTCHA v2 site key."));const run=()=>{try{if(!window.grecaptcha)throw new Error("reCAPTCHA is still loading. Please wait a moment and try again.");if(recaptchaWidgetId!==null){try{window.grecaptcha.reset(recaptchaWidgetId);resolve(recaptchaWidgetId);return;}catch(_){recaptchaWidgetId=null;}}recaptchaWidgetId=window.grecaptcha.render(el,{sitekey:key,callback:()=>{const st=document.getElementById("sfAuthStatus");if(st&&st.classList.contains("error")&&/reCAPTCHA|robot|verification/i.test(st.textContent||""))st.hidden=true;},"expired-callback":()=>{resetCustomerRecaptcha();authStatus("Your reCAPTCHA verification expired. Please check “I’m not a robot” again.",true);},"error-callback":()=>{authStatus("reCAPTCHA could not be verified. Please check “I’m not a robot” again.",true);}});resolve(recaptchaWidgetId);}catch(e){reject(e)}};if(window.grecaptcha)run();else{let tries=0;const timer=setInterval(()=>{tries++;if(window.grecaptcha){clearInterval(timer);run()}else if(tries>50){clearInterval(timer);reject(new Error("reCAPTCHA could not load."))}},100)}})}
+function renderCustomerRecaptcha(){return new Promise((resolve,reject)=>{const el=document.getElementById("sfRecaptcha");if(!el)return reject(new Error("Human verification is unavailable."));const key=window.STEADFAST_RECAPTCHA_SITE_KEY||el.dataset.sitekey||"";if(!key||key.startsWith("REPLACE_WITH_"))return reject(new Error("reCAPTCHA is not configured yet. Add the STEADFAST reCAPTCHA v2 site key."));const run=()=>{try{if(window.grecaptcha){if(recaptchaWidgetId!==null){try{window.grecaptcha.reset(recaptchaWidgetId)}catch(_){}} recaptchaWidgetId=window.grecaptcha.render(el,{sitekey:key,callback:()=>{const st=document.getElementById("sfAuthStatus");if(st&&st.classList.contains("error")&&/reCAPTCHA|robot|verification/i.test(st.textContent||""))st.hidden=true;},"expired-callback":()=>{resetCustomerRecaptcha();authStatus("Your reCAPTCHA verification expired. Please check “I’m not a robot” again.",true);},"error-callback":()=>{authStatus("reCAPTCHA could not be verified. Please check “I’m not a robot” again.",true);}});resolve(recaptchaWidgetId);return}reject(new Error("reCAPTCHA is still loading. Please wait a moment and try again."));}catch(e){reject(e)}};if(window.grecaptcha)run();else{let tries=0;const timer=setInterval(()=>{tries++;if(window.grecaptcha){clearInterval(timer);run()}else if(tries>50){clearInterval(timer);reject(new Error("reCAPTCHA could not load."))}},100)}})}
 function getCustomerRecaptchaToken(){if(recaptchaWidgetId===null||!window.grecaptcha)return "";return window.grecaptcha.getResponse(recaptchaWidgetId)||""}
 function resetCustomerRecaptcha(){if(recaptchaWidgetId!==null&&window.grecaptcha)window.grecaptcha.reset(recaptchaWidgetId)}
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -90,7 +102,7 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
           ? 'Your account is created. We sent a verification link to your Gmail/email. Open Gmail, click VERIFY MY EMAIL, then return here to sign in.'
           : 'Your account is created and saved. The verification email could not be sent yet. Please contact support or use the resend verification option.';
         document.getElementById('sfAuthSubmit').textContent='Sign in →';
-        if(verificationSent){ showVerificationSent(email); } else { authStatus('Account created and saved, but the verification email could not be sent yet. Your account was not deleted. Please contact support or use the verification email resend option after the mail service is configured.',true); }
+        showVerificationSent(email);
         return;
       }catch(regErr){
         console.error('Customer registration failed:',regErr);

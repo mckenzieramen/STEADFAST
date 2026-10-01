@@ -1,4 +1,4 @@
-const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2/options');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
@@ -149,8 +149,28 @@ exports.saveCustomerProfile = onCall(async (request) => {
 
 
 
-exports.registerCustomer = onCall({ secrets: [recaptchaSecret] }, async (request) => {
-  const data = request.data || {};
+exports.registerCustomer = onRequest({ secrets: [recaptchaSecret] }, async (req, res) => {
+  const origin = String(req.get('origin') || '');
+  const allowedOrigins = new Set([
+    'https://steadfast-cliffjandee.pages.dev',
+    'https://steadfast-cliffjandee.pages.dev/'
+  ]);
+  const allowOrigin = allowedOrigins.has(origin) ? origin : 'https://steadfast-cliffjandee.pages.dev';
+
+  res.set('Access-Control-Allow-Origin', allowOrigin);
+  res.set('Vary', 'Origin');
+  res.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.set('Access-Control-Allow-Headers', 'Content-Type');
+  res.set('Access-Control-Max-Age', '3600');
+
+  if (req.method === 'OPTIONS') {
+    return res.status(204).send('');
+  }
+  if (req.method !== 'POST') {
+    return res.status(405).json({ ok: false, code: 'method-not-allowed', message: 'POST required.' });
+  }
+
+  const data = (req.body && typeof req.body === 'object') ? req.body : {};
   const firstName = String(data.firstName || '').trim();
   const lastName = String(data.lastName || '').trim();
   const email = String(data.email || '').trim().toLowerCase();
@@ -158,22 +178,24 @@ exports.registerCustomer = onCall({ secrets: [recaptchaSecret] }, async (request
   const password = String(data.password || '');
   const token = String(data.recaptchaToken || '').trim();
 
+  const fail = (status, code, message) => res.status(status).json({ ok: false, code, message });
+
   if (!firstName || !lastName || !email || !username || !password || !token) {
-    throw new HttpsError('invalid-argument', 'First Name, Last Name, Email, Username, Password, and reCAPTCHA verification are required.');
+    return fail(400, 'invalid-argument', 'First Name, Last Name, Email, Username, Password, and reCAPTCHA verification are required.');
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-    throw new HttpsError('invalid-argument', 'Please enter a valid email address.');
+    return fail(400, 'invalid-argument', 'Please enter a valid email address.');
   }
   if (!/^[a-z0-9._-]{3,24}$/.test(username)) {
-    throw new HttpsError('invalid-argument', 'Username must be 3–24 characters using letters, numbers, dot, underscore or hyphen.');
+    return fail(400, 'invalid-argument', 'Username must be 3–24 characters using letters, numbers, dot, underscore or hyphen.');
   }
   if (password.length < 6) {
-    throw new HttpsError('invalid-argument', 'Password must be at least 6 characters.');
+    return fail(400, 'invalid-argument', 'Password must be at least 6 characters.');
   }
 
   const secret = String(recaptchaSecret.value() || '').trim();
   if (!secret) {
-    throw new HttpsError('failed-precondition', 'The STEADFAST reCAPTCHA server key is not configured.');
+    return fail(500, 'failed-precondition', 'The STEADFAST reCAPTCHA server key is not configured.');
   }
 
   let captcha;
@@ -186,7 +208,7 @@ exports.registerCustomer = onCall({ secrets: [recaptchaSecret] }, async (request
     captcha = await response.json();
   } catch (error) {
     console.error('registerCustomer reCAPTCHA request failed:', error);
-    throw new HttpsError('unavailable', 'The reCAPTCHA verification service could not be reached. Please try again.');
+    return fail(503, 'unavailable', 'The reCAPTCHA verification service could not be reached. Please try again.');
   }
 
   if (!captcha.success) {
@@ -199,18 +221,18 @@ exports.registerCustomer = onCall({ secrets: [recaptchaSecret] }, async (request
       'invalid-input-response': 'The reCAPTCHA response was invalid. Please check “I’m not a robot” again.',
       'bad-request': 'Google rejected the reCAPTCHA verification request. Please try again.'
     };
-    throw new HttpsError('permission-denied', messages[code] || `Google reCAPTCHA verification failed (${code}).`);
+    return fail(403, 'permission-denied', messages[code] || `Google reCAPTCHA verification failed (${code}).`);
   }
 
   if (captcha.hostname && captcha.hostname !== 'steadfast-cliffjandee.pages.dev') {
-    throw new HttpsError('permission-denied', `reCAPTCHA hostname mismatch: ${captcha.hostname}`);
+    return fail(403, 'permission-denied', `reCAPTCHA hostname mismatch: ${captcha.hostname}`);
   }
 
   const db = admin.firestore();
   const usernameRef = db.doc(`customerUsernames/${username}`);
   const usernameSnap = await usernameRef.get();
   if (usernameSnap.exists) {
-    throw new HttpsError('already-exists', 'That username is already taken. Please choose another username.');
+    return fail(409, 'already-exists', 'That username is already taken. Please choose another username.');
   }
 
   let userRecord;
@@ -222,57 +244,69 @@ exports.registerCustomer = onCall({ secrets: [recaptchaSecret] }, async (request
     });
   } catch (error) {
     if (error && error.code === 'auth/email-already-exists') {
-      throw new HttpsError('already-exists', 'That email already has a STEADFAST customer account. Please use Sign in.');
+      return fail(409, 'already-exists', 'That email already has a STEADFAST customer account. Please use Sign in.');
     }
     console.error('registerCustomer createUser failed:', error);
-    throw new HttpsError('internal', 'The STEADFAST account could not be created. Please try again.');
+    return fail(500, 'internal', 'The STEADFAST account could not be created. Please try again.');
   }
 
   const profileRef = db.doc(`customerProfiles/${userRecord.uid}`);
+  const registrationRef = db.doc(`customerRegistrations/${userRecord.uid}`);
 
-  // Save the account profile first. A mail-service problem must never undo a
-  // successfully created Firebase Authentication account.
+  // Save the account and profile first. Email delivery must never delete a successfully created account.
   try {
     const now = admin.firestore.FieldValue.serverTimestamp();
     await db.runTransaction(async tx => {
+      const latestAlias = await tx.get(usernameRef);
+      if (latestAlias.exists && String(latestAlias.data()?.uid || '') !== userRecord.uid) {
+        throw new Error('USERNAME_TAKEN_AFTER_CREATE');
+      }
       tx.set(profileRef, {
         uid: userRecord.uid,
         firstName,
         lastName,
         email,
         username,
-        createdAt: now
-      });
+        createdAt: now,
+        updatedAt: now
+      }, { merge: true });
       tx.set(usernameRef, {
         email,
         uid: userRecord.uid,
-        createdAt: now
-      });
+        createdAt: now,
+        updatedAt: now
+      }, { merge: true });
+      tx.set(registrationRef, {
+        uid: userRecord.uid,
+        email,
+        username,
+        firstName,
+        lastName,
+        status: 'pending_verification',
+        verificationEmailSent: false,
+        updatedAt: now
+      }, { merge: true });
     });
   } catch (error) {
-    console.error('registerCustomer profile save failed:', error);
+    console.error('registerCustomer profile storage failed:', error);
     try { await db.recursiveDelete(profileRef); } catch (_) {}
     try { await db.recursiveDelete(usernameRef); } catch (_) {}
+    try { await db.recursiveDelete(registrationRef); } catch (_) {}
     try { await admin.auth().deleteUser(userRecord.uid); } catch (_) {}
-    throw new HttpsError('internal', 'The account was created in Firebase, but the customer profile could not be saved. Please try again.');
+    if (String(error?.message || '') === 'USERNAME_TAKEN_AFTER_CREATE') {
+      return fail(409, 'already-exists', 'That username is already taken. Please choose another username.');
+    }
+    return fail(500, 'internal', 'Your account could not be saved. Please try again.');
   }
 
-  // Verification email is intentionally non-fatal. If the Gmail Bridge is
-  // missing or temporarily unavailable, keep the account and tell the client
-  // that the email still needs to be sent. This prevents the old
-  // "internal [0]" account-creation failure and avoids deleting the user.
   let verificationSent = false;
   let verificationError = '';
   try {
-    if (!BRIDGE_URL) {
-      throw new Error('STEADFAST Gmail Bridge URL is not configured.');
-    }
-
+    if (!BRIDGE_URL) throw new Error('STEADFAST Gmail Bridge URL is not configured.');
     const verificationUrl = await admin.auth().generateEmailVerificationLink(email, {
       url: CONTINUE_URL,
       handleCodeInApp: false
     });
-
     const body = new URLSearchParams({
       action: 'sendVerificationEmail',
       customerEmail: email,
@@ -280,39 +314,43 @@ exports.registerCustomer = onCall({ secrets: [recaptchaSecret] }, async (request
       lastName,
       verificationUrl
     }).toString();
-
     const response = await fetch(BRIDGE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
       body
     });
-
     const raw = await response.text();
     let bridgeResult;
-    try {
-      bridgeResult = JSON.parse(raw);
-    } catch (_) {
-      bridgeResult = { ok: false, error: raw };
-    }
-
+    try { bridgeResult = JSON.parse(raw); } catch (_) { bridgeResult = { ok: false, error: raw }; }
     if (!response.ok || !bridgeResult.ok) {
-      throw new Error(bridgeResult.error || `The verification email service returned HTTP ${response.status}.`);
+      throw new Error(bridgeResult.error || 'The verification email could not be sent.');
     }
-
     verificationSent = true;
   } catch (error) {
     verificationError = String(error?.message || 'The verification email could not be sent.');
-    console.error('registerCustomer verification email failed:', verificationError);
+    console.error('registerCustomer verification email failed:', error);
   }
 
-  return {
+  try {
+    await registrationRef.set({
+      verificationEmailSent: verificationSent,
+      verificationEmailError: verificationSent ? '' : verificationError,
+      status: verificationSent ? 'pending_verification' : 'created_email_pending',
+      updatedAt: admin.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+  } catch (error) {
+    console.error('registerCustomer registration status update failed:', error);
+  }
+
+  return res.status(200).json({
     ok: true,
     email,
     username,
-    uid: userRecord.uid,
     verificationSent,
-    verificationError: verificationSent ? '' : verificationError
-  };
+    message: verificationSent
+      ? 'Account created successfully. Please verify your email before signing in.'
+      : 'Account created and saved, but the verification email could not be sent yet.'
+  });
 });
 
 exports.verifyCustomerHuman = onCall({ secrets: [recaptchaSecret] }, async (request) => {
