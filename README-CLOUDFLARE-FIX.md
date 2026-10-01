@@ -19,3 +19,7 @@ A clean STEADFAST black/purple favicon is included in `assets/` and linked acros
 
 ## reCAPTCHA
 The v2 checkbox remains required for registration. The widget lifecycle was adjusted to avoid unnecessary re-rendering when switching between Sign in and Create account. Google may still present an image challenge depending on its risk assessment; site code cannot force Google to never show that challenge.
+
+
+## Registration stability fix
+The Firebase registration function now keeps the Firebase Auth account and customer profile even if the Gmail Bridge is unavailable. A mail-service failure no longer deletes the newly created account or returns the old `internal [0]` registration error. Configure `firebase-functions/.env` from `.env.example` and deploy Firebase Functions when the Gmail Bridge URL is available.

@@ -90,7 +90,7 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
           ? 'Your account is created. We sent a verification link to your Gmail/email. Open Gmail, click VERIFY MY EMAIL, then return here to sign in.'
           : 'Your account is created and saved. The verification email could not be sent yet. Please contact support or use the resend verification option.';
         document.getElementById('sfAuthSubmit').textContent='Sign in →';
-        showVerificationSent(email);
+        if(verificationSent){ showVerificationSent(email); } else { authStatus('Account created and saved, but the verification email could not be sent yet. Your account was not deleted. Please contact support or use the verification email resend option after the mail service is configured.',true); }
         return;
       }catch(regErr){
         console.error('Customer registration failed:',regErr);
