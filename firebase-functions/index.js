@@ -6,7 +6,7 @@ const admin = require('firebase-admin');
 admin.initializeApp();
 setGlobalOptions({ region: 'asia-southeast1', maxInstances: 10 });
 
-const BRIDGE_URL = process.env.STEADFAST_GMAIL_BRIDGE_URL || '';
+const BRIDGE_URL = 'https://script.google.com/macros/s/AKfycbzit8ibUWLvji0-hM_PEAe9hLdahzRMp6FXTkTkK3LWUHOmv0I_0iddRCP55ypgmFQEGw/exec';
 const CONTINUE_URL = 'https://steadfast-cliffjandee.pages.dev/store.html?verified=1';
 const recaptchaSecret = defineSecret('RECAPTCHA_SECRET_KEY');
 
