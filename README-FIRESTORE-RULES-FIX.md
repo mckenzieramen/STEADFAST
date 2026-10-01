@@ -1,7 +1,13 @@
-# Firestore Rules Fix
+# Firestore Rules — No-Blaze Customer Verification
 
-This version fixes the customer registration profile/username write denial.
+The included `firestore.rules` gates Store purchases/reviews using the server-set `customerProfiles/{uid}.emailVerified` field.
 
-Deploy the included `firestore.rules` in Firebase Console > Firestore Database > Rules, then Publish.
+Customers can create/update normal profile fields but cannot write the verification fields themselves. The STEADFAST Gmail Bridge updates the verification fields server-side after a correct 6-digit code.
 
-No Cloud Functions are required for customer registration in this version.
+Deploy only the Rules when ready:
+
+```bash
+firebase deploy --only firestore:rules
+```
+
+No Firebase Cloud Functions are required for this flow.

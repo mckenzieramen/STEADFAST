@@ -16,7 +16,7 @@ async function callSteadfastBridge(action, params={}){
     script.onerror=()=>finish(reject,new Error("The STEADFAST Gmail Bridge could not be reached."));
     script.src=`${STEADFAST_GMAIL_BRIDGE_URL}?${query.toString()}`;
     document.head.appendChild(script);
-    const timer=setTimeout(()=>finish(reject,new Error("The STEADFAST Gmail Bridge timed out. Please try again.")),20000);
+    const timer=setTimeout(()=>finish(reject,new Error("The STEADFAST Gmail Bridge timed out. Please try again.")),12000);
   });
 }
 async function getCustomerProfile(user=auth.currentUser){
@@ -190,9 +190,11 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
       if(!captchaToken){authStatus('Please complete the “I’m not a robot” verification. Google may ask you to select images when additional verification is needed.',true);return}
       authStatus('Checking security and creating your STEADFAST account…');
       try{
-        const captchaCheck=await callSteadfastBridge('verifyRecaptcha',{recaptchaToken:captchaToken});
+        const [captchaCheck,existingUsername]=await Promise.all([
+          callSteadfastBridge('verifyRecaptcha',{recaptchaToken:captchaToken}),
+          getDoc(doc(db,'customerUsernames',username))
+        ]);
         if(!captchaCheck?.ok)throw Object.assign(new Error(captchaCheck?.error||'reCAPTCHA verification was rejected.'),{code:'recaptcha/failed'});
-        const existingUsername=await getDoc(doc(db,'customerUsernames',username));
         if(existingUsername.exists()){throw Object.assign(new Error('That username is already taken. Please choose another username.'),{code:'username/already-taken'});}
         const cred=await Promise.race([
           createUserWithEmailAndPassword(auth,email,pw),
@@ -200,23 +202,38 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
         ]);
         const user=cred.user;
         await Promise.race([
-          (async()=>{
-            await setDoc(doc(db,'customerProfiles',user.uid),{uid:user.uid,firstName:first,lastName:last,email,username,createdAt:serverTimestamp(),updatedAt:serverTimestamp()},{merge:true});
-            await setDoc(doc(db,'customerUsernames',username),{uid:user.uid,email,updatedAt:serverTimestamp()},{merge:true});
-          })(),
-          new Promise((_,reject)=>setTimeout(()=>reject(new Error('Customer profile storage timed out. Please try again.')),30000))
+          Promise.all([
+            setDoc(doc(db,'customerProfiles',user.uid),{uid:user.uid,firstName:first,lastName:last,email,username,createdAt:serverTimestamp(),updatedAt:serverTimestamp()},{merge:true}),
+            setDoc(doc(db,'customerUsernames',username),{uid:user.uid,email,updatedAt:serverTimestamp()},{merge:true})
+          ]),
+          new Promise((_,reject)=>setTimeout(()=>reject(new Error('Customer profile storage timed out. Please try again.')),15000))
         ]);
         resetCustomerRecaptcha();
         setAuthBusy(false);
         closeCustomerAuth();
-        let verificationNotice='';
+
+        // Show the 6-digit verification window immediately. Email delivery continues in the background.
+        showEmailVerificationModal(email,'Account created successfully. Preparing your 6-digit verification code…');
+        const resendButton=document.getElementById('sfResendVerification');
+        const verificationStatus=document.getElementById('sfVerificationStatus');
+        if(resendButton){resendButton.disabled=true;resendButton.textContent='Sending…';}
         try{
           await requestVerificationCode(user,first,last);
+          if(verificationStatus){
+            verificationStatus.innerHTML=`A 6-digit verification code was sent to <strong>${esc(email)}</strong>.`;
+            verificationStatus.hidden=false;
+            verificationStatus.classList.remove('error');
+          }
         }catch(sendErr){
           console.error('Initial verification email failed:',sendErr);
-          verificationNotice=String(sendErr?.message||'The verification code could not be sent yet. Please use Resend Verification Code.');
+          if(verificationStatus){
+            verificationStatus.textContent=String(sendErr?.message||'The verification code could not be sent yet. Please use Resend Verification Code.');
+            verificationStatus.hidden=false;
+            verificationStatus.classList.add('error');
+          }
+        }finally{
+          if(resendButton){resendButton.disabled=false;resendButton.textContent='Resend Verification Code';}
         }
-        showEmailVerificationModal(email,verificationNotice);
         return;
       }catch(regErr){
         console.error('Customer registration failed:',regErr);

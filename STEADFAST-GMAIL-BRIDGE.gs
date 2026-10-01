@@ -22,39 +22,35 @@
 const ADMIN_EMAIL = 'yahhclffjnd@gmail.com';
 const BRAND_NAME = 'STEADFAST by Cliff Jandee Medrano';
 const DISCOUNT_TEXT = 'Exclusive offer: UP TO 75% OFF your website project, subject to final scope, review, and eligibility.';
-const VERIFICATION_BRIDGE_SECRET = '5Z6aMGd2Em55cp9nYtwGQIMPNU1cW-Z5SIK0uzipNYA';
+const FIREBASE_PROJECT_ID = 'steadfast-1d0e6';
+const FIREBASE_API_KEY = 'AIzaSyD13MXR0ZQSjPJBxQKYPmsMKjl4yzU2hSs';
+const VERIFICATION_PROPERTY_PREFIX = 'STEADFAST_VERIFY_';
 
 function doGet(e) {
   try {
     const p = (e && e.parameter) ? e.parameter : {};
     const action = String(p.action || '').trim();
+    const prefix = safeJsonpPrefix_(p.prefix);
+    let result;
 
-    if (action === 'health') {
-      return json_({
-        ok: true,
-        service: 'STEADFAST Gmail Bridge',
-        status: 'ready',
-        adminEmail: ADMIN_EMAIL
-      });
+    if (action === 'health' || !action) {
+      result = { ok: true, service: 'STEADFAST Gmail Bridge', status: 'ready', adminEmail: ADMIN_EMAIL };
+    } else if (action === 'verifyRecaptcha') {
+      result = verifyRecaptcha_(String(p.recaptchaToken || '').trim());
+    } else if (action === 'sendVerificationCode') {
+      result = sendCustomerVerificationCode_(p);
+    } else if (action === 'verifyVerificationCode') {
+      result = verifyCustomerVerificationCode_(p);
+    } else {
+      result = { ok: false, error: 'Unknown action.' };
     }
 
-    if (action === 'sendVerificationCode') {
-      const suppliedSecret = String(p.bridgeSecret || '').trim();
-      if (suppliedSecret !== VERIFICATION_BRIDGE_SECRET) {
-        return json_({ ok: false, error: 'Unauthorized verification request.' });
-      }
-      return sendVerificationEmail_(p);
-    }
-
-    return json_({
-      ok: true,
-      service: 'STEADFAST Gmail Bridge',
-      status: 'ready',
-      adminEmail: ADMIN_EMAIL
-    });
+    return prefix ? jsonp_(prefix, result) : json_(result);
   } catch (err) {
     console.error(err);
-    return json_({ ok: false, error: String(err && err.message || err) });
+    const result = { ok: false, error: String(err && err.message || err) };
+    const prefix = safeJsonpPrefix_(e && e.parameter ? e.parameter.prefix : '');
+    return prefix ? jsonp_(prefix, result) : json_(result);
   }
 }
 
@@ -65,7 +61,6 @@ function doPost(e) {
 
     if (action === 'sendQuoteEmail') return sendQuoteEmail_(p);
     if (action === 'sendEmail') return sendAdminEmail_(p);
-    if (action === 'sendVerificationEmail' || action === 'sendVerificationCode') return sendVerificationEmail_(p);
     if (action === 'paymentSubmitted') return sendPaymentSubmittedEmail_(p);
     if (action === 'paymentVerified') return sendPaymentVerifiedEmail_(p);
     if (action === 'paymentFailed') return sendPaymentFailedEmail_(p);
@@ -204,6 +199,171 @@ function sendQuoteEmail_(p) {
 }
 
 
+
+function safeJsonpPrefix_(value) {
+  const prefix = String(value || '').trim();
+  return /^[A-Za-z_$][0-9A-Za-z_$\.]*$/.test(prefix) ? prefix : '';
+}
+
+function jsonp_(prefix, obj) {
+  return ContentService
+    .createTextOutput(prefix + '(' + JSON.stringify(obj) + ')')
+    .setMimeType(ContentService.MimeType.JAVASCRIPT);
+}
+
+function verifyRecaptcha_(token) {
+  if (!token) throw new Error('Please complete the reCAPTCHA verification.');
+  const secret = PropertiesService.getScriptProperties().getProperty('RECAPTCHA_SECRET_KEY');
+  if (!secret) throw new Error('The reCAPTCHA server secret is not configured in the STEADFAST Gmail Bridge.');
+  const response = UrlFetchApp.fetch('https://www.google.com/recaptcha/api/siteverify', {
+    method: 'post',
+    payload: { secret: secret, response: token },
+    muteHttpExceptions: true
+  });
+  const body = JSON.parse(response.getContentText() || '{}');
+  if (!body.success) {
+    const codes = Array.isArray(body['error-codes']) ? body['error-codes'].join(', ') : '';
+    throw new Error('reCAPTCHA verification was rejected by Google.' + (codes ? ' ' + codes : ''));
+  }
+  return { ok: true, human: true };
+}
+
+function lookupFirebaseUser_(idToken) {
+  if (!idToken) throw new Error('Your sign-in session is missing. Please sign in again.');
+  const url = 'https://identitytoolkit.googleapis.com/v1/accounts:lookup?key=' + encodeURIComponent(FIREBASE_API_KEY);
+  const response = UrlFetchApp.fetch(url, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify({ idToken: idToken }),
+    muteHttpExceptions: true
+  });
+  const body = JSON.parse(response.getContentText() || '{}');
+  if (response.getResponseCode() !== 200 || !Array.isArray(body.users) || !body.users[0]) {
+    throw new Error('Your sign-in session is no longer valid. Please sign in again.');
+  }
+  return body.users[0];
+}
+
+function makeVerificationCode_() {
+  const seed = Utilities.getUuid() + ':' + new Date().getTime() + ':' + Math.random();
+  const bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, seed, Utilities.Charset.UTF_8);
+  let value = 0;
+  for (let i = 0; i < 4; i++) value = (value * 256 + (bytes[i] & 0xff)) >>> 0;
+  return String(value % 1000000).padStart(6, '0');
+}
+
+function hashVerificationCode_(uid, code) {
+  const digest = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    String(uid) + ':' + String(code),
+    Utilities.Charset.UTF_8
+  );
+  return digest.map(function(b) {
+    const v = b < 0 ? b + 256 : b;
+    return ('0' + v.toString(16)).slice(-2);
+  }).join('');
+}
+
+function sendCustomerVerificationCode_(p) {
+  const user = lookupFirebaseUser_(String(p.idToken || '').trim());
+  const uid = String(user.localId || '').trim();
+  const customerEmail = String(user.email || '').trim().toLowerCase();
+  if (!uid || !/^\S+@\S+\.\S+$/.test(customerEmail)) throw new Error('The signed-in customer account has no valid email address.');
+  if (user.emailVerified === true) return { ok: true, sent: false, alreadyVerified: true };
+
+  const props = PropertiesService.getScriptProperties();
+  const key = VERIFICATION_PROPERTY_PREFIX + uid;
+  const now = Date.now();
+  let state = {};
+  try { state = JSON.parse(props.getProperty(key) || '{}'); } catch (_) { state = {}; }
+  if (state.sentAt && now - Number(state.sentAt) < 15000) {
+    throw new Error('A verification code was just sent. Please wait a few seconds before requesting another one.');
+  }
+
+  const code = makeVerificationCode_();
+  state = {
+    codeHash: hashVerificationCode_(uid, code),
+    expiresAt: now + 10 * 60 * 1000,
+    sentAt: now,
+    attempts: 0,
+    email: customerEmail
+  };
+  props.setProperty(key, JSON.stringify(state));
+
+  try {
+    sendVerificationEmail_({
+      customerEmail: customerEmail,
+      firstName: String(p.firstName || user.displayName || 'there').trim().split(' ')[0],
+      lastName: String(p.lastName || '').trim(),
+      verificationCode: code
+    });
+  } catch (err) {
+    props.deleteProperty(key);
+    throw err;
+  }
+
+  return { ok: true, sent: true };
+}
+
+function verifyCustomerVerificationCode_(p) {
+  const user = lookupFirebaseUser_(String(p.idToken || '').trim());
+  const uid = String(user.localId || '').trim();
+  const email = String(user.email || '').trim().toLowerCase();
+  if (!uid || !email) throw new Error('The signed-in customer account is incomplete.');
+  if (user.emailVerified === true) return { ok: true, verified: true, alreadyVerified: true };
+
+  const code = String(p.code || '').trim();
+  if (!/^\d{6}$/.test(code)) throw new Error('Enter the complete 6-digit verification code.');
+
+  const props = PropertiesService.getScriptProperties();
+  const key = VERIFICATION_PROPERTY_PREFIX + uid;
+  let state = {};
+  try { state = JSON.parse(props.getProperty(key) || '{}'); } catch (_) { state = {}; }
+  if (!state.codeHash) throw new Error('No active verification code was found. Please request a new code.');
+  if (Date.now() > Number(state.expiresAt || 0)) {
+    props.deleteProperty(key);
+    throw new Error('This verification code has expired. Please request a new code.');
+  }
+  if (Number(state.attempts || 0) >= 5) {
+    props.deleteProperty(key);
+    throw new Error('Too many incorrect verification attempts. Please request a new code.');
+  }
+
+  if (hashVerificationCode_(uid, code) !== String(state.codeHash)) {
+    state.attempts = Number(state.attempts || 0) + 1;
+    props.setProperty(key, JSON.stringify(state));
+    const remaining = Math.max(0, 5 - state.attempts);
+    throw new Error(remaining ? `Incorrect verification code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.` : 'Too many incorrect verification attempts. Please request a new code.');
+  }
+
+  markCustomerProfileVerified_(uid);
+  props.deleteProperty(key);
+  return { ok: true, verified: true };
+}
+
+function markCustomerProfileVerified_(uid) {
+  const token = ScriptApp.getOAuthToken();
+  const url = 'https://firestore.googleapis.com/v1/projects/' + encodeURIComponent(FIREBASE_PROJECT_ID) + '/databases/(default)/documents/customerProfiles/' + encodeURIComponent(uid) + '?updateMask.fieldPaths=emailVerified&updateMask.fieldPaths=verifiedAt&updateMask.fieldPaths=updatedAt';
+  const now = new Date().toISOString();
+  const payload = {
+    fields: {
+      emailVerified: { booleanValue: true },
+      verifiedAt: { timestampValue: now },
+      updatedAt: { timestampValue: now }
+    }
+  };
+  const response = UrlFetchApp.fetch(url, {
+    method: 'patch',
+    contentType: 'application/json',
+    headers: { Authorization: 'Bearer ' + token },
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+  if (response.getResponseCode() < 200 || response.getResponseCode() >= 300) {
+    console.error(response.getContentText());
+    throw new Error('The email code was correct, but STEADFAST could not save the verification status. Please try again.');
+  }
+}
 
 function sendVerificationEmail_(p) {
   const customerEmail = String(p.customerEmail || '').trim();

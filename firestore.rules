@@ -18,7 +18,13 @@ service cloud.firestore {
 
     function isVerifiedCustomer() {
       return request.auth != null
-        && request.auth.token.email_verified == true;
+        && (
+          request.auth.token.email_verified == true
+          || (
+            exists(/databases/$(database)/documents/customerProfiles/$(request.auth.uid))
+            && get(/databases/$(database)/documents/customerProfiles/$(request.auth.uid)).data.emailVerified == true
+          )
+        );
     }
 
     // =====================================================
@@ -128,13 +134,24 @@ service cloud.firestore {
     match /customerProfiles/{uid} {
       allow read: if isAdmin()
         || (request.auth != null && request.auth.uid == uid);
+
+      // Customer-created profile fields only. The verification fields are
+      // intentionally excluded so the customer cannot mark their own email verified.
       allow create: if request.auth != null
         && request.auth.uid == uid
         && request.resource.data.uid == uid
-        && request.resource.data.email == request.auth.token.email;
+        && request.resource.data.email == request.auth.token.email
+        && request.resource.data.keys().hasOnly([
+          'uid', 'firstName', 'lastName', 'email', 'username', 'createdAt', 'updatedAt'
+        ]);
 
+      // Customers may edit normal profile fields, but never verification state.
       allow update: if request.auth != null
-        && request.auth.uid == uid;
+        && request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+          'firstName', 'lastName', 'username', 'updatedAt'
+        ]);
+
       allow delete: if isAdmin()
         || (request.auth != null && request.auth.uid == uid);
     }

@@ -1,106 +1,122 @@
-# STEADFAST — FINAL 6-Digit Email Verification
+# STEADFAST — 6-DIGIT VERIFICATION — NO FIREBASE CLOUD FUNCTIONS
 
-This package replaces the old Firebase email-verification-link flow with a 6-digit code flow.
+This version removes the Firebase Cloud Functions dependency so the STEADFAST project does **not** require a Firebase Blaze upgrade just to run customer registration/verification.
 
 ## Customer flow
 
-1. Customer creates an account.
-2. reCAPTCHA v2 is checked server-side.
-3. Firebase creates the account and customer profile.
-4. Firebase generates a one-time 6-digit code.
-5. The code is sent to the **customer's registered email address** through the STEADFAST Gmail Bridge.
-6. The Store page opens a verification modal:
-   - Enter your 6-digit verification code
-   - Verify Email
-   - Resend Verification Code
-7. Correct code marks the Firebase Auth account as `emailVerified`.
-8. The success message says the customer can now purchase products on the page.
-9. No verification-link email is used.
+1. Customer opens Create Account.
+2. Google reCAPTCHA v2 checkbox is completed.
+3. The STEADFAST Gmail Bridge verifies the reCAPTCHA server-side.
+4. Firebase Authentication creates the email/password account directly from the browser.
+5. Firestore stores the customer profile and username alias.
+6. The Gmail Bridge generates a fresh random 6-digit code and sends the branded STEADFAST email.
+7. Customer enters the 6-digit code in the Store modal.
+8. The Gmail Bridge verifies the code and securely marks `customerProfiles/{uid}.emailVerified = true`.
+9. Firestore Rules use that profile verification state to gate purchases and eligible reviews.
 
-## Why this version is different
+The Firebase built-in verification-link email is not used by this flow.
 
-The Firebase Function no longer sends the verification-code request as a POST to the Apps Script Web App. It uses a signed GET request because Apps Script Web Apps can redirect POST requests. The Firebase Function now also returns a useful `unavailable` error containing the Bridge error instead of hiding a Bridge failure behind a generic `internal` error.
+## Important architecture change
 
-## Google Apps Script — REQUIRED
+There is **no Firebase Cloud Functions deployment** in this package. `firebase.json` contains Firestore and Storage rules only. The Store calls the existing Apps Script Web App through a small JSONP bridge. The Apps Script runs as the owner, validates Firebase ID tokens, verifies reCAPTCHA, generates/stores the verification code state, sends Gmail, and writes the verified profile field through the Firestore REST API.
+
+Google documents JSONP support for Apps Script Content Service and notes that the response should contain only non-sensitive data; this bridge returns only status/error information.
+
+## Apps Script — REQUIRED
 
 Use the included:
 
 `STEADFAST-GMAIL-BRIDGE.gs`
 
-Replace the old Apps Script source with this file.
+Also use the included manifest:
 
-Then:
+`appsscript.json`
 
-1. Save.
-2. Deploy → Manage deployments.
-3. Edit the existing Web App deployment.
-4. Execute as: **Me**
-5. Who has access: **Anyone**
-6. Deploy/update the existing Web App.
+### 1. Replace the Apps Script code
+
+Replace the existing Apps Script source with the included `STEADFAST-GMAIL-BRIDGE.gs`.
+
+If the Apps Script editor does not currently show the manifest file, enable **Project Settings → Show "appsscript.json" manifest file in editor**, then replace its contents with the included `appsscript.json`.
+
+### 2. Add the reCAPTCHA secret as a Script Property
+
+In Apps Script:
+
+**Project Settings → Script Properties → Add script property**
+
+Name:
+
+`RECAPTCHA_SECRET_KEY`
+
+Value: the **reCAPTCHA v2 Checkbox secret key** for the STEADFAST site.
+
+Do not paste the secret into `store.js`, GitHub, or any public file. If the old secret was previously exposed, rotate it in Google reCAPTCHA before saving the replacement here.
+
+### 3. Authorize the bridge
+
+Save the script. Run:
+
+`authorizeAndTest`
+
+Approve the Gmail and external-request permissions when Google asks.
+
+The script also needs Firestore REST access. The included manifest requests the `datastore` scope. The Google account executing the Web App must have access to the `steadfast-1d0e6` Firebase project.
+
+### 4. Deploy/update the Web App
+
+Deploy → Manage deployments → edit the existing Web App.
+
+Use:
+
+- Execute as: **Me**
+- Who has access: **Anyone**
 
 Keep the existing `/exec` URL.
 
-Then run the Apps Script function:
+### 5. Test the Gmail bridge
+
+Run:
 
 `testVerificationCodeEmail`
 
-It sends a test code `123456` to the bridge owner's admin email.
+This sends the fixed test code `123456` to the admin email. This is only a Gmail delivery test; customer codes are generated randomly by the bridge.
 
 ## Firebase deployment
+
+You only need to deploy Firestore Rules (and Storage Rules if you intentionally changed them). **Do not run `firebase deploy --only functions`.**
 
 From the project root:
 
 ```bash
 firebase login
 firebase use steadfast-1d0e6
-firebase functions:secrets:set RECAPTCHA_SECRET_KEY
-firebase deploy --only functions
+firebase deploy --only firestore:rules
 ```
 
-Do not put the reCAPTCHA secret in GitHub.
+## Cloudflare / GitHub
 
-## Website deployment
+Push the revised website files to the GitHub repository connected to Cloudflare Pages. No Firebase Functions build is required.
 
-Upload/push the root website files to the GitHub repository connected to Cloudflare Pages.
-
-After Cloudflare finishes deploying, use:
+After Cloudflare finishes, hard-refresh the Store:
 
 `https://steadfast-cliffjandee.pages.dev/store.html?auth=login`
 
-Hard refresh with:
+Use `Ctrl + Shift + R`.
 
-`Ctrl + Shift + R`
+## Verification behavior
 
-## Expected UI
+- Every resend generates a **new random 6-digit code**.
+- A previous code becomes invalid when a new one is issued.
+- Codes expire after 10 minutes.
+- Maximum 5 incorrect attempts per issued code.
+- Resend has a short 15-second server-side anti-spam cooldown.
+- The code is stored as a SHA-256 hash in Apps Script Properties, not as plain text.
+- Only the server-side Apps Script can set `customerProfiles/{uid}.emailVerified` because the Firestore customer update rules explicitly block customers from changing verification fields.
 
-The old UI:
-
-- Verify your email first
-- verification link
-- VERIFY MY EMAIL
-
-is not part of this final flow.
-
-The new UI is:
-
-**Enter your 6-digit verification code.**
-
-`[  _ _ _ _ _ _ ]`
-
-**Verify Email**
-
-**Resend Verification Code**
+## Expected success
 
 After a correct code:
 
 **Congratulations! Your email is verified.**
 
 **Your email has been successfully verified. You can now purchase products on this page and submit eligible buyer reviews.**
-
-## Notes
-
-- Codes expire after 10 minutes.
-- Maximum 5 incorrect attempts.
-- Resend is throttled to about once per minute.
-- The verification code is stored as a SHA-256 hash in Firestore, not as plain text.
-- Gmail spam placement is controlled by Gmail and cannot be guaranteed by code.
