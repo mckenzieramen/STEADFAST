@@ -68,9 +68,6 @@ function showVerificationSent(email){const el=document.getElementById('sfAuthSta
 function setAuthBusy(busy){const btn=document.getElementById('sfAuthSubmit');if(!btn)return;btn.disabled=busy;btn.classList.toggle('is-loading',busy);btn.dataset.originalText=btn.dataset.originalText||btn.textContent;if(busy){btn.innerHTML='<span class="sf-auth-spinner" aria-hidden="true"></span> Please wait…';}else{btn.textContent=btn.dataset.originalText;delete btn.dataset.originalText;}}
 function showCustomerLoginSuccess(){const modal=document.getElementById('sfCustomerSuccessModal');if(!modal)return;modal.hidden=false;document.body.classList.add('modal-open');}
 function closeCustomerLoginSuccess(){const modal=document.getElementById('sfCustomerSuccessModal');if(modal)modal.hidden=true;if(!document.querySelector('.sf-modal:not([hidden])'))document.body.classList.remove('modal-open');}
-function showEmailVerificationModal(email){const modal=document.getElementById('sfEmailVerificationModal');const text=document.getElementById('sfVerificationText');const status=document.getElementById('sfVerificationStatus');const btn=document.getElementById('sfResendVerification');if(!modal)return;const safeEmail=String(email||'your email').trim();if(text)text.innerHTML=`We sent a verification link to <strong>${esc(safeEmail)}</strong>.<br><br>Open your email, click <strong>VERIFY MY EMAIL</strong>, then return to STEADFAST and sign in again. You must verify your email before you can purchase.`;if(status){status.hidden=true;status.textContent='';status.classList.remove('error')}if(btn){btn.disabled=false;btn.textContent='Resend Verification Email'}modal.hidden=false;document.body.classList.add('modal-open');}
-function closeEmailVerificationModal(){const modal=document.getElementById('sfEmailVerificationModal');if(modal)modal.hidden=true;if(!document.querySelector('.sf-modal:not([hidden])'))document.body.classList.remove('modal-open');}
-async function resendCurrentVerificationEmail(){const user=auth.currentUser;const btn=document.getElementById('sfResendVerification');const status=document.getElementById('sfVerificationStatus');if(!user){if(status){status.textContent='Please sign in again so we can resend the verification email.';status.hidden=false;status.classList.add('error')}return}if(user.emailVerified){closeEmailVerificationModal();authStatus('Your email is already verified. You can now sign in and purchase.');return}if(btn){btn.disabled=true;btn.textContent='Sending…'}if(status){status.hidden=true;status.textContent='';status.classList.remove('error')}try{await sendEmailVerification(user,{url:'https://steadfast-cliffjandee.pages.dev/store.html?verified=1',handleCodeInApp:false});if(status){status.innerHTML=`Verification email sent to <strong>${esc(user.email||'your email')}</strong>. Please check your Inbox, Spam, or Promotions folder.`;status.hidden=false;status.classList.remove('error')}}catch(err){console.error('Resend verification email failed:',err);if(status){status.textContent=`We could not send the verification email. ${String(err?.message||'Please try again in a moment.')}`;status.hidden=false;status.classList.add('error')}}finally{if(btn){btn.disabled=false;btn.textContent='Resend Verification Email'}}}
 function setAuthMode(mode){authMode=mode==='register'?'register':'login';const reg=authMode==='register';document.querySelectorAll('[data-auth-mode]').forEach(b=>b.classList.toggle('active',b.dataset.authMode===authMode));const title=document.getElementById('sfAuthTitle'),intro=document.getElementById('sfAuthIntro'),submit=document.getElementById('sfAuthSubmit'),confirm=document.getElementById('sfAuthConfirmWrap'),pw=document.getElementById('sfAuthPassword'),names=document.getElementById('sfRegisterNames'),username=document.getElementById('sfRegisterUsernameWrap'),registerEmail=document.getElementById('sfRegisterEmailWrap'),human=document.getElementById('sfHumanCheckWrap'),loginLabel=document.getElementById('sfUsernameWrap'),loginInput=document.getElementById('sfAuthEmail');if(title)title.textContent=reg?'Create your STEADFAST account.':'Sign in to your STEADFAST account.';if(intro)intro.textContent=reg?'Create your customer account. We will send a verification link to your Gmail/email before your account can be activated.':'Sign in with your username or email and password. Use either one as your credential.';if(submit)submit.textContent=reg?'Create account →':'Sign in →';const setVisible=(el,show,display='')=>{if(!el)return;el.hidden=!show;el.style.display=show?display:'none';el.setAttribute('aria-hidden',show?'false':'true');};setVisible(confirm,reg,'');setVisible(names,reg,'grid');setVisible(username,reg,'');setVisible(registerEmail,reg,'');setVisible(human,reg,'');setVisible(loginLabel,!reg,'');if(reg){setTimeout(()=>renderCustomerRecaptcha().catch(err=>authStatus(err.message,true)),50)}else{resetCustomerRecaptcha();}if(loginInput){loginInput.required=!reg;loginInput.disabled=reg;}document.getElementById('sfAuthUsername')?.toggleAttribute('required',reg);document.getElementById('sfAuthRegisterEmail')?.toggleAttribute('required',reg);document.getElementById('sfAuthFirstName')?.toggleAttribute('required',reg);document.getElementById('sfAuthLastName')?.toggleAttribute('required',reg);if(pw)pw.autocomplete=reg?'new-password':'current-password';const st=document.getElementById('sfAuthStatus');if(st)st.hidden=true}function openCustomerAuth(mode='login'){const modal=document.getElementById('sfCustomerAuthModal');if(!modal)return;setAuthMode(mode);modal.hidden=false;document.body.classList.add('modal-open');setTimeout(()=>document.getElementById(authMode==='register'?'sfAuthFirstName':'sfAuthEmail')?.focus(),50)}
 function closeCustomerAuth(){const modal=document.getElementById('sfCustomerAuthModal');if(modal)modal.hidden=true;document.body.classList.remove('modal-open')}
 function updateStoreAccount(user){const title=document.getElementById('storeAccountTitle'),detail=document.getElementById('storeAccountDetail'),actions=document.getElementById('storeAccountActions');if(!title||!detail||!actions)return;if(user){title.textContent=`Signed in as ${user.email||'customer'}`;detail.textContent='Your account is ready for purchasing and verified buyer reviews.';actions.innerHTML='<button class="btn primary" type="button" data-buy-account>Browse products →</button><button class="btn ghost" type="button" data-signout>Sign out</button>'}else{title.textContent='Sign in to purchase';detail.textContent='You can browse the Store as a guest. An account is required only when you purchase.';actions.innerHTML='<button class="btn primary" type="button" data-open-auth="login">Sign in</button><button class="btn ghost" type="button" data-open-auth="register">Create account</button><button class="btn ghost" type="button" data-guest-store>Visit as guest</button>'}}
@@ -177,19 +174,9 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
     const cred=await signInWithEmailAndPassword(auth,email,pw);
     await reload(cred.user);
     if(!cred.user.emailVerified){
-      let sent=true;
-      try{await sendEmailVerification(cred.user,{url:'https://steadfast-cliffjandee.pages.dev/store.html?verified=1',handleCodeInApp:false});}catch(sendErr){sent=false;console.error('Verification email after sign-in failed:',sendErr)}
-      setAuthBusy(false);
-      authStatus('');
-      showEmailVerificationModal(email);
-      const status=document.getElementById('sfVerificationStatus');
-      if(status){
-        status.innerHTML=sent
-          ? `A fresh verification email was sent to <strong>${esc(email)}</strong>. Please check your Inbox, Spam, or Promotions folder.`
-          : 'We could not send the verification email right now. Use “Resend Verification Email” to try again.';
-        status.hidden=false;
-        status.classList.toggle('error',!sent);
-      }
+      await sendEmailVerification(cred.user,{url:'https://steadfast-cliffjandee.pages.dev/store.html?verified=1',handleCodeInApp:false}).catch(()=>{});
+      await signOut(auth);
+      authStatus('Your email is not verified yet. We sent another verification link to '+email+'. Verify it first, then sign in again.',true);
       return;
     }
     authStatus('Sign in successful.');
@@ -218,7 +205,8 @@ function openCheckout(p){
     return;
   }
   if(!user.emailVerified){
-    showEmailVerificationModal(user.email);
+    openCustomerAuth('login');
+    authStatus('Please verify your email before purchasing.');
     return;
   }
   const code=p.accessCodeHash||"";const modal=document.getElementById('sfPreviewModal'),body=document.getElementById('sfPreviewBody');
@@ -231,10 +219,6 @@ function loadStore(){const grid=document.getElementById('steadfastStoreGrid');if
 document.addEventListener('click',e=>{const close=e.target.closest('[data-close-preview]');if(close)document.getElementById('sfPreviewModal').hidden=true;const pb=e.target.closest('[data-preview]');if(pb)preview(products.find(p=>p.id===pb.dataset.preview));const buy=e.target.closest('[data-buy]');if(buy&&!buy.closest('#sfPreviewBody'))openCheckout(products.find(p=>p.id===buy.dataset.buy));});
 loadStore();
 
-onAuthStateChanged(auth,async u=>{if(u){await reload(u).catch(()=>{});if(!u.emailVerified){updateStoreAccount(null);return;}}updateStoreAccount(u);});
-
-document.getElementById('sfResendVerification')?.addEventListener('click',resendCurrentVerificationEmail);
-document.getElementById('sfVerificationGmail')?.addEventListener('click',()=>window.location.href='https://mail.google.com/mail/u/0/#inbox');
-document.querySelectorAll('[data-close-verification]').forEach(el=>el.addEventListener('click',closeEmailVerificationModal));
+onAuthStateChanged(auth,async u=>{if(u){await reload(u).catch(()=>{});if(!u.emailVerified){await signOut(auth).catch(()=>{});updateStoreAccount(null);return;}}updateStoreAccount(u);});
 const params=new URLSearchParams(location.search);if(params.get('auth')==='login')setTimeout(()=>openCustomerAuth('login'),150);if(params.get('verified')==='1')setTimeout(()=>{openCustomerAuth('login');authStatus('Email verification completed. You can now sign in with your email and password.');},200);
 
