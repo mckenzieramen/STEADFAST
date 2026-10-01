@@ -25,11 +25,9 @@ async function sendVerificationCode_(uid, email, firstName, lastName) {
   const snap = await registrationRef.get();
   const existing = snap.exists ? snap.data() : {};
   const nowMs = Date.now();
-  const sentAt = existing.verificationCodeSentAt;
-  if (sentAt && typeof sentAt.toMillis === 'function' && nowMs - sentAt.toMillis() < 60000) {
-    throw new HttpsError('resource-exhausted', 'A verification code was sent recently. Please wait about a minute before requesting another code.');
-  }
 
+  // Every resend generates and sends a brand-new 6-digit code immediately.
+  // The previous code is replaced in Firestore, so only the newest code can verify the account.
   const code = makeVerificationCode_();
   const codeHash = hashVerificationCode_(uid, code);
   const expiresAt = admin.firestore.Timestamp.fromMillis(nowMs + 10 * 60 * 1000);
