@@ -1,52 +1,42 @@
-# STEADFAST Gmail Bridge — Current Setup
+# STEADFAST Custom Verification Email Setup
 
-## Gmail account
-The current sending/notification account is:
+The Store registration flow uses the Firebase `registerCustomer` HTTPS function. That function creates the Firebase account/profile, generates the real Firebase verification link, and sends it to the STEADFAST Gmail Bridge. The Gmail Bridge sends the branded HTML email.
 
-`yahhclffjnd@gmail.com`
+## 1. Google Apps Script
 
-## Current flow
+Use `STEADFAST-GMAIL-BRIDGE.gs` in the STEADFAST Gmail Bridge Apps Script project.
 
-Customer submits Website Quotation → Firestore → STEADFAST Gmail Bridge →
-1. customer confirmation email
-2. admin notification email to `yahhclffjnd@gmail.com`
+Deploy it as a Web App:
+- Execute as: Me
+- Who has access: Anyone
 
-Admin Dashboard → Email / Gmail → Gmail Bridge → customer.
+After changing the Apps Script code, create a new deployment or update the existing Web App deployment. Copy the Web App URL.
 
-## Web App URL
+## 2. Firebase Functions bridge URL
 
-The deployed Web App URL is stored in `email-config.js`.
+From the `firebase-functions` directory, create `.env` with:
 
-## Important
+`STEADFAST_GMAIL_BRIDGE_URL="YOUR_APPS_SCRIPT_WEB_APP_URL"`
 
-The Gmail password is never stored in the STEADFAST website. The Apps Script Web App executes as the Google account that owns/deploys the bridge and uses GmailApp to send mail. Google Apps Script web apps require a `doGet(e)` or `doPost(e)` function and are deployed from Deploy → New deployment → Web app.
+Do not commit `.env` to GitHub.
 
-If the Apps Script source is edited, create a new deployment version or update the existing deployment so the `/exec` URL uses the latest saved code.
+## 3. reCAPTCHA secret
 
+Keep the v2 Checkbox secret in Firebase Functions Secret Manager as `RECAPTCHA_SECRET_KEY`. Do not put the secret in the website or GitHub.
 
-## REQUIRED ONE-TIME GMAIL AUTHORIZATION
+## 4. Deploy Functions
 
-After updating the Apps Script source to the V5 bridge code, run the function `authorizeAndTest()` manually while signed in as `yahhclffjnd@gmail.com`. Approve the Gmail permission request. The function sends a connection-test email to the admin account.
+```bash
+cd firebase-functions
+npm install
+cd ..
+firebase deploy --only functions:registerCustomer,functions:sendCustomerVerificationEmail
+```
 
-Then update the Web App deployment to a new version using the same `/exec` deployment URL. The website already points to that URL.
+## 5. Deploy the static website
 
-## AUTOMATIC CUSTOMER EMAIL
+Deploy the updated `store.js` and the rest of the project to GitHub/Cloudflare Pages.
 
-When a website quotation is successfully written to Firestore, the website requests the Gmail bridge to send:
+## Expected flow
 
-1. A customer confirmation containing the submitted quotation summary.
-2. The current promotional offer of **UP TO 75% OFF**, subject to final scope/review/eligibility.
-3. An admin notification to `yahhclffjnd@gmail.com`.
-
-If the customer does not receive the email, first check the Apps Script **Executions** panel and Gmail **Sent** folder. Google Apps Script requires authorization before a script can use Gmail services.
-
-## Store payment emails
-The checkout now sends HTML payment-submitted and payment-verified emails through the same Google Apps Script Gmail bridge. After changing `STEADFAST-GMAIL-BRIDGE.gs`, redeploy the Apps Script Web App using the same URL in `email-config.js`.
-
-MariBank / QR: the admin can save a provider-supported payment link template. `{amount}` is replaced with the fixed product amount and `{order}` with the order ID. The QR is generated from the resulting link. A QR Ph-compatible QR can be scanned by supported banking apps; the website does not claim to verify a bank transfer by itself.
-
-
-### Customer Email Verification
-Customer registration now uses the Firebase `registerCustomer` HTTPS function. Firebase Admin SDK creates the account and generates the legitimate verification action link, then the function sends that link to the STEADFAST Gmail Bridge. The bridge sends the branded HTML email. The Store no longer calls Firebase's generic `sendEmailVerification()` for registration or resend.
-
-After editing `STEADFAST-GMAIL-BRIDGE.gs`, update the Apps Script Web App deployment using the existing `/exec` URL. Then deploy the Firebase Functions, including `registerCustomer` and `sendCustomerVerificationEmail`. The Firebase Functions deployment requires the reCAPTCHA server secret `RECAPTCHA_SECRET_KEY` to be configured as a Firebase secret.
+Create Account -> reCAPTCHA -> Firebase `registerCustomer` -> Firebase creates account/profile -> Firebase generates verification link -> Gmail Bridge -> branded STEADFAST HTML email -> VERIFY MY EMAIL -> Firebase verifies -> return to STEADFAST -> sign in.
