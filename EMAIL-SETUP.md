@@ -47,4 +47,6 @@ MariBank / QR: the admin can save a provider-supported payment link template. `{
 
 
 ### Customer Email Verification
-Customer registration uses Firebase Authentication's built-in email verification. The Store calls `sendEmailVerification()` immediately after account creation. The customer is signed out until the email is verified. On sign-in, the Store checks `emailVerified`; unverified users are blocked and sent another verification email. To customize the HTML verification email, open Firebase Console → Authentication → Templates → Email address verification and customize the subject/body/action branding.
+Customer registration now uses the Firebase `registerCustomer` HTTPS function. Firebase Admin SDK creates the account and generates the legitimate verification action link, then the function sends that link to the STEADFAST Gmail Bridge. The bridge sends the branded HTML email. The Store no longer calls Firebase's generic `sendEmailVerification()` for registration or resend.
+
+After editing `STEADFAST-GMAIL-BRIDGE.gs`, update the Apps Script Web App deployment using the existing `/exec` URL. Then deploy the Firebase Functions, including `registerCustomer` and `sendCustomerVerificationEmail`. The Firebase Functions deployment requires the reCAPTCHA server secret `RECAPTCHA_SECRET_KEY` to be configured as a Firebase secret.
