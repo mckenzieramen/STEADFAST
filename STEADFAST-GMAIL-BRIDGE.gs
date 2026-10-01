@@ -265,7 +265,17 @@ function hashVerificationCode_(uid, code) {
 }
 
 function sendCustomerVerificationCode_(p) {
-  const user = lookupFirebaseUser_(String(p.idToken || '').trim());
+  // Serialize the check/write/send sequence so concurrent requests cannot send duplicate emails.
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    return sendCustomerVerificationCodeLocked_(p);
+  } finally {
+    try { lock.releaseLock(); } catch (_) {}
+  }
+}
+
+function sendCustomerVerificationCodeLocked_(p) {
   const uid = String(user.localId || '').trim();
   const customerEmail = String(user.email || '').trim().toLowerCase();
   if (!uid || !/^\S+@\S+\.\S+$/.test(customerEmail)) throw new Error('The signed-in customer account has no valid email address.');

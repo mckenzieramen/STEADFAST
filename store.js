@@ -38,6 +38,7 @@ async function requestVerificationCode(user, firstName="", lastName=""){
 }
 let recaptchaWidgetId=null;
 let recaptchaRenderPromise=null;
+let customerRegistrationInFlight=false;
 function renderCustomerRecaptcha(){
   if(recaptchaWidgetId!==null)return Promise.resolve(recaptchaWidgetId);
   if(recaptchaRenderPromise)return recaptchaRenderPromise;
@@ -188,6 +189,8 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
       }
       const captchaToken=getCustomerRecaptchaToken();
       if(!captchaToken){authStatus('Please complete the “I’m not a robot” verification. Google may ask you to select images when additional verification is needed.',true);return}
+      if(customerRegistrationInFlight)return;
+      customerRegistrationInFlight=true;
       authStatus('Checking security and creating your STEADFAST account…');
       try{
         const [captchaCheck,existingUsername]=await Promise.all([
@@ -250,6 +253,7 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
 
         return;
       }catch(regErr){
+        customerRegistrationInFlight=false;
         console.error('Customer registration failed:',regErr);
         resetCustomerRecaptcha();
         const code=String(regErr?.code||'');
