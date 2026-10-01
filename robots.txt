@@ -1,3 +1,0 @@
-User-agent: *
-Allow: /
-Sitemap: https://steadfast-cliffjandee.pages.dev/sitemap.xml
