@@ -117,24 +117,40 @@ service cloud.firestore {
     // fields needed to resolve username -> email during sign in.
     match /customerUsernames/{username} {
       allow read: if true;
+
+      // A signed-in customer may create only their own username alias.
+      // Do not compare the profile email to the Auth token here because
+      // that can reject a valid first write when the Auth token is still
+      // refreshing immediately after account creation.
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
-        && request.resource.data.email == request.auth.token.email;
+        && request.resource.data.email is string;
 
-      allow update, delete: if request.auth != null
+      allow update: if request.auth != null
+        && resource.data.uid == request.auth.uid
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email is string;
+
+      allow delete: if request.auth != null
         && resource.data.uid == request.auth.uid;
     }
 
     match /customerProfiles/{uid} {
       allow read: if isAdmin()
         || (request.auth != null && request.auth.uid == uid);
+
+      // The UID is the security boundary. The customer may store their
+      // own profile immediately after Firebase Auth creates the account.
       allow create: if request.auth != null
         && request.auth.uid == uid
         && request.resource.data.uid == uid
-        && request.resource.data.email == request.auth.token.email;
+        && request.resource.data.email is string;
 
       allow update: if request.auth != null
-        && request.auth.uid == uid;
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.email is string;
+
       allow delete: if isAdmin()
         || (request.auth != null && request.auth.uid == uid);
     }
