@@ -1,11 +1,41 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, reload, getIdToken } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, getIdToken } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, setDoc, getDoc, doc, serverTimestamp, onSnapshot, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 const firebaseConfig={apiKey:"AIzaSyD13MXR0ZQSjPJBxQKYPmsMKjl4yzU2hSs",authDomain:"steadfast-1d0e6.firebaseapp.com",projectId:"steadfast-1d0e6",storageBucket:"steadfast-1d0e6.firebasestorage.app",messagingSenderId:"488385339804",appId:"1:488385339804:web:0d2bcf3967a8f95ccfe859"};
-const customerApp=getApps().find(a=>a.name==="steadfastCustomer")||initializeApp(firebaseConfig,"steadfastCustomer"),db=getFirestore(customerApp),auth=getAuth(customerApp),functions=getFunctions(customerApp,"asia-southeast1");
-const sendCustomerVerificationEmail=httpsCallable(functions,"sendCustomerVerificationEmail");
-const verifyCustomerEmailCode=httpsCallable(functions,"verifyCustomerEmailCode");
+const customerApp=getApps().find(a=>a.name==="steadfastCustomer")||initializeApp(firebaseConfig,"steadfastCustomer"),db=getFirestore(customerApp),auth=getAuth(customerApp);
+const STEADFAST_GMAIL_BRIDGE_URL="https://script.google.com/macros/s/AKfycbzP4Dl5iIdHXSydoxJNJBDIpJWrTh3SA4Kl3BnTAKKLQ-_j_rvxHgF51YGvAD_R0eOQgA/exec";
+async function callSteadfastBridge(action, params={}){
+  return new Promise((resolve,reject)=>{
+    const callbackName=`__sfBridge_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    const script=document.createElement("script");
+    const query=new URLSearchParams({action,prefix:callbackName,...Object.fromEntries(Object.entries(params).map(([k,v])=>[k,String(v??"")]))});
+    let settled=false;
+    const cleanup=()=>{try{delete window[callbackName]}catch(_){window[callbackName]=undefined}script.remove();clearTimeout(timer)};
+    const finish=(fn,value)=>{if(settled)return;settled=true;cleanup();fn(value)};
+    window[callbackName]=(data)=>finish(resolve,data||{});
+    script.onerror=()=>finish(reject,new Error("The STEADFAST Gmail Bridge could not be reached."));
+    script.src=`${STEADFAST_GMAIL_BRIDGE_URL}?${query.toString()}`;
+    document.head.appendChild(script);
+    const timer=setTimeout(()=>finish(reject,new Error("The STEADFAST Gmail Bridge timed out. Please try again.")),20000);
+  });
+}
+async function getCustomerProfile(user=auth.currentUser){
+  if(!user)return null;
+  const snap=await getDoc(doc(db,"customerProfiles",user.uid));
+  return snap.exists()?snap.data():null;
+}
+async function isCustomerVerified(user=auth.currentUser){
+  if(!user)return false;
+  const profile=await getCustomerProfile(user);
+  return profile?.emailVerified===true || user.emailVerified===true;
+}
+async function requestVerificationCode(user, firstName="", lastName=""){
+  if(!user)throw new Error("Please sign in again so we can send a verification code.");
+  const idToken=await getIdToken(user,true);
+  const result=await callSteadfastBridge("sendVerificationCode",{idToken,firstName,lastName});
+  if(!result?.ok)throw new Error(result?.error||"The verification code could not be sent.");
+  return result;
+}
 let recaptchaWidgetId=null;
 let recaptchaRenderPromise=null;
 function renderCustomerRecaptcha(){
@@ -90,16 +120,15 @@ function closeEmailVerificationModal(){const modal=document.getElementById('sfEm
 async function resendCurrentVerificationEmail(){
   const user=auth.currentUser,btn=document.getElementById('sfResendVerification'),status=document.getElementById('sfVerificationStatus');
   if(!user){if(status){status.textContent='Please sign in again so we can send a verification code.';status.hidden=false;status.classList.add('error')}return}
-  await reload(user);
-  if(user.emailVerified){closeEmailVerificationModal();authStatus('Your email is already verified. You can now sign in and purchase.');return}
+  const verified=await isCustomerVerified(user).catch(()=>false);
+  if(verified){closeEmailVerificationModal();authStatus('Your email is already verified. You can now purchase and submit eligible buyer reviews.');return}
   if(btn){btn.disabled=true;btn.textContent='Sending…'}
   if(status){status.hidden=true;status.textContent='';status.classList.remove('error')}
   try{
-    const result=await sendCustomerVerificationEmail({});
-    if(result?.data?.sent||result?.data?.ok){
-      if(status){status.innerHTML=`A new 6-digit verification code was sent to <strong>${esc(user.email||'your email')}</strong>.`;status.hidden=false;status.classList.remove('error');}
-      document.getElementById('sfVerificationCode')?.focus();
-    }else throw new Error('The verification code was not confirmed by STEADFAST.');
+    const profile=await getCustomerProfile(user);
+    await requestVerificationCode(user,profile?.firstName||'',profile?.lastName||'');
+    if(status){status.innerHTML=`A new 6-digit verification code was sent to <strong>${esc(user.email||'your email')}</strong>.`;status.hidden=false;status.classList.remove('error');}
+    document.getElementById('sfVerificationCode')?.focus();
   }catch(err){console.error('Resend verification code failed:',err);if(status){status.textContent=String(err?.message||'We could not send the verification code right now.');status.hidden=false;status.classList.add('error')}}
   finally{if(btn){btn.disabled=false;btn.textContent='Resend Verification Code'}}
 }
@@ -108,16 +137,18 @@ async function verifyEnteredCustomerCode(){
   const code=String(input?.value||'').replace(/\D/g,'').slice(0,6);
   if(input)input.value=code;
   if(!/^\d{6}$/.test(code)){if(status){status.textContent='Enter the complete 6-digit verification code.';status.hidden=false;status.classList.add('error')}return}
+  const user=auth.currentUser;
+  if(!user){if(status){status.textContent='Please sign in again before verifying your email.';status.hidden=false;status.classList.add('error')}return}
   if(btn){btn.disabled=true;btn.textContent='Verifying…'}
   if(status){status.hidden=true;status.textContent='';status.classList.remove('error')}
   try{
-    const result=await verifyCustomerEmailCode({code});
-    if(!result?.data?.verified)throw new Error('The verification could not be confirmed.');
-    const user=auth.currentUser;
-    if(user){await reload(user);await getIdToken(user,true);}
+    const idToken=await getIdToken(user,true);
+    const result=await callSteadfastBridge('verifyVerificationCode',{idToken,code});
+    if(!result?.verified)throw new Error(result?.error||'The verification code could not be confirmed.');
     closeEmailVerificationModal();
     authStatus('Email verified successfully. You can now purchase and submit eligible buyer reviews.');
     closeCustomerAuth();
+    updateStoreAccount(user);
     setTimeout(showCustomerLoginSuccess,120);
   }catch(err){
     console.error('Verification code failed:',err);
@@ -157,39 +188,35 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
       }
       const captchaToken=getCustomerRecaptchaToken();
       if(!captchaToken){authStatus('Please complete the “I’m not a robot” verification. Google may ask you to select images when additional verification is needed.',true);return}
-      authStatus('Creating your STEADFAST account…');
+      authStatus('Checking security and creating your STEADFAST account…');
       try{
-        const response=await Promise.race([
-          fetch('https://asia-southeast1-steadfast-1d0e6.cloudfunctions.net/registerCustomer',{
-            method:'POST',
-            headers:{'Content-Type':'application/json'},
-            body:JSON.stringify({firstName:first,lastName:last,email,username,password:pw,recaptchaToken:captchaToken})
-          }),
+        const captchaCheck=await callSteadfastBridge('verifyRecaptcha',{recaptchaToken:captchaToken});
+        if(!captchaCheck?.ok)throw Object.assign(new Error(captchaCheck?.error||'reCAPTCHA verification was rejected.'),{code:'recaptcha/failed'});
+        const existingUsername=await getDoc(doc(db,'customerUsernames',username));
+        if(existingUsername.exists()){throw Object.assign(new Error('That username is already taken. Please choose another username.'),{code:'username/already-taken'});}
+        const cred=await Promise.race([
+          createUserWithEmailAndPassword(auth,email,pw),
           new Promise((_,reject)=>setTimeout(()=>reject(new Error('Account creation timed out. Please try again.')),30000))
         ]);
-        const result=await response.json().catch(()=>({ok:false,message:'The registration service returned an invalid response.'}));
-        if(!response.ok||!result.ok){
-          const error=new Error(result.message||'The account could not be created.');
-          error.code=result.code||'';
-          throw error;
-        }
+        const user=cred.user;
+        await Promise.race([
+          (async()=>{
+            await setDoc(doc(db,'customerProfiles',user.uid),{uid:user.uid,firstName:first,lastName:last,email,username,createdAt:serverTimestamp(),updatedAt:serverTimestamp()},{merge:true});
+            await setDoc(doc(db,'customerUsernames',username),{uid:user.uid,email,updatedAt:serverTimestamp()},{merge:true});
+          })(),
+          new Promise((_,reject)=>setTimeout(()=>reject(new Error('Customer profile storage timed out. Please try again.')),30000))
+        ]);
         resetCustomerRecaptcha();
         setAuthBusy(false);
+        closeCustomerAuth();
+        let verificationNotice='';
         try{
-          await signInWithEmailAndPassword(auth,email,pw);
-          closeCustomerAuth();
-          showEmailVerificationModal(
-            email,
-            result.verificationSent
-              ? ''
-              : 'Your account was created, but the verification code could not be sent yet. Please use Resend Verification Code.'
-          );
-        }catch(autoErr){
-          console.error('Automatic sign-in after registration failed:',autoErr);
-          document.getElementById('sfAuthTitle').textContent='Account created.';
-          document.getElementById('sfAuthIntro').textContent='Your account was created. Sign in with your username or email and password, then enter the 6-digit code from your email.';
-          showVerificationSent(email);
+          await requestVerificationCode(user,first,last);
+        }catch(sendErr){
+          console.error('Initial verification email failed:',sendErr);
+          verificationNotice=String(sendErr?.message||'The verification code could not be sent yet. Please use Resend Verification Code.');
         }
+        showEmailVerificationModal(email,verificationNotice);
         return;
       }catch(regErr){
         console.error('Customer registration failed:',regErr);
@@ -213,18 +240,45 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
       if(!email){authStatus('This username is not linked to a valid customer email.',true);return}
     }
     authStatus('Signing you in…');
-    const cred=await signInWithEmailAndPassword(auth,email,pw);
-    await reload(cred.user);
-    if(!cred.user.emailVerified){
-      let sent=true;
-      let sendMessage='';
-      try{const resendResult=await sendCustomerVerificationEmail({});sent=Boolean(resendResult?.data?.sent||resendResult?.data?.ok);}catch(sendErr){sent=false;sendMessage=String(sendErr?.message||'We could not send the verification code right now.');console.error('Verification code after sign-in failed:',sendErr)}
-      setAuthBusy(false);
-      authStatus('');
-      showEmailVerificationModal(email,sent?'A fresh 6-digit verification code was sent to your email.':sendMessage);
-      return;
-    }
-    authStatus('Sign in successful.');
+async function resendCurrentVerificationEmail(){
+  const user=auth.currentUser,btn=document.getElementById('sfResendVerification'),status=document.getElementById('sfVerificationStatus');
+  if(!user){if(status){status.textContent='Please sign in again so we can send a verification code.';status.hidden=false;status.classList.add('error')}return}
+  const verified=await isCustomerVerified(user).catch(()=>false);
+  if(verified){closeEmailVerificationModal();authStatus('Your email is already verified. You can now purchase and submit eligible buyer reviews.');return}
+  if(btn){btn.disabled=true;btn.textContent='Sending…'}
+  if(status){status.hidden=true;status.textContent='';status.classList.remove('error')}
+  try{
+    const profile=await getCustomerProfile(user);
+    await requestVerificationCode(user,profile?.firstName||'',profile?.lastName||'');
+    if(status){status.innerHTML=`A new 6-digit verification code was sent to <strong>${esc(user.email||'your email')}</strong>.`;status.hidden=false;status.classList.remove('error');}
+    document.getElementById('sfVerificationCode')?.focus();
+  }catch(err){console.error('Resend verification code failed:',err);if(status){status.textContent=String(err?.message||'We could not send the verification code right now.');status.hidden=false;status.classList.add('error')}}
+  finally{if(btn){btn.disabled=false;btn.textContent='Resend Verification Code'}}
+}
+async function verifyEnteredCustomerCode(){
+  const input=document.getElementById('sfVerificationCode'),btn=document.getElementById('sfVerifyCode'),status=document.getElementById('sfVerificationStatus');
+  const code=String(input?.value||'').replace(/\D/g,'').slice(0,6);
+  if(input)input.value=code;
+  if(!/^\d{6}$/.test(code)){if(status){status.textContent='Enter the complete 6-digit verification code.';status.hidden=false;status.classList.add('error')}return}
+  const user=auth.currentUser;
+  if(!user){if(status){status.textContent='Please sign in again before verifying your email.';status.hidden=false;status.classList.add('error')}return}
+  if(btn){btn.disabled=true;btn.textContent='Verifying…'}
+  if(status){status.hidden=true;status.textContent='';status.classList.remove('error')}
+  try{
+    const idToken=await getIdToken(user,true);
+    const result=await callSteadfastBridge('verifyVerificationCode',{idToken,code});
+    if(!result?.verified)throw new Error(result?.error||'The verification code could not be confirmed.');
+    closeEmailVerificationModal();
+    authStatus('Email verified successfully. You can now purchase and submit eligible buyer reviews.');
+    closeCustomerAuth();
+    updateStoreAccount(user);
+    setTimeout(showCustomerLoginSuccess,120);
+  }catch(err){
+    console.error('Verification code failed:',err);
+    const msg=String(err?.message||'The verification code could not be confirmed.');
+    if(status){status.textContent=msg;status.hidden=false;status.classList.add('error')}
+  }finally{if(btn){btn.disabled=false;btn.textContent='Verify Email'}}
+}
     closeCustomerAuth();
     setAuthBusy(false);
     setTimeout(showCustomerLoginSuccess,120);
@@ -233,9 +287,9 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
     if(authMode==='register')resetCustomerRecaptcha();
     const code=err?.code||'';
     const rawMessage=String(err?.message||'');
-    const message=code==='auth/invalid-credential'?'Username/email or password is incorrect.':code==='auth/email-already-in-use'?'That email already has a STEADFAST customer account. Please use Sign in.':code==='auth/weak-password'?'Password must be at least 6 characters.':code==='auth/invalid-email'?'Please enter a valid email address.':code==='auth/operation-not-allowed'?'Email/password sign-in is disabled in Firebase. Enable Authentication → Sign-in method → Email/Password.':code==='auth/network-request-failed'?'Network error. Check your internet connection and try again.':code==='functions/failed-precondition'?'STEADFAST reCAPTCHA server key is not configured yet. Please contact the site administrator.':code==='functions/internal'?'STEADFAST verification service could not complete the request. Please try again.':code==='functions/unavailable'?'The reCAPTCHA verification service is temporarily unavailable. Please try again.':code==='functions/permission-denied'?(rawMessage||'reCAPTCHA verification was rejected by Google. Please check “I’m not a robot” again.') :code==='auth/too-many-requests'?'Too many attempts. Please wait a moment and try again.':(rawMessage.toLowerCase().includes('internal')?'A STEADFAST service could not complete the request. Please try again.':(rawMessage||'Account action failed.'));
+    const message=code==='auth/invalid-credential'?'Username/email or password is incorrect.':code==='auth/email-already-in-use'?'That email already has a STEADFAST customer account. Please use Sign in.':code==='auth/weak-password'?'Password must be at least 6 characters.':code==='auth/invalid-email'?'Please enter a valid email address.':code==='auth/operation-not-allowed'?'Email/password sign-in is disabled in Firebase. Enable Authentication → Sign-in method → Email/Password.':code==='auth/network-request-failed'?'Network error. Check your internet connection and try again.':code==='recaptcha/failed'?(rawMessage||'reCAPTCHA verification was rejected. Please check “I’m not a robot” again.'):code==='auth/too-many-requests'?'Too many attempts. Please wait a moment and try again.':(rawMessage.toLowerCase().includes('internal')?'A STEADFAST service could not complete the request. Please try again.':(rawMessage||'Account action failed.'));
     authStatus(message,true);
-    if(authMode==='register' && String(code).startsWith('functions/')){
+    if(authMode==='register' && String(code)==='recaptcha/failed'){
       showSystemError('Security verification could not be completed.',message);
     }
   }finally{
@@ -243,13 +297,13 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
   }
 });
 
-function openCheckout(p){
+async function openCheckout(p){
   const user=auth.currentUser;
   if(!user){
     openCustomerAuth('login');
     return;
   }
-  if(!user.emailVerified){
+  if(!(await isCustomerVerified(user).catch(()=>false))){
     showEmailVerificationModal(user.email);
     return;
   }
@@ -263,7 +317,7 @@ function loadStore(){const grid=document.getElementById('steadfastStoreGrid');if
 document.addEventListener('click',e=>{const close=e.target.closest('[data-close-preview]');if(close)document.getElementById('sfPreviewModal').hidden=true;const pb=e.target.closest('[data-preview]');if(pb)preview(products.find(p=>p.id===pb.dataset.preview));const buy=e.target.closest('[data-buy]');if(buy&&!buy.closest('#sfPreviewBody'))openCheckout(products.find(p=>p.id===buy.dataset.buy));});
 loadStore();
 
-onAuthStateChanged(auth,async u=>{if(u){await reload(u).catch(()=>{});if(!u.emailVerified){updateStoreAccount(null);return;}}updateStoreAccount(u);});
+onAuthStateChanged(auth,async u=>{if(!u){updateStoreAccount(null);return;}const verified=await isCustomerVerified(u).catch(()=>false);updateStoreAccount(verified?u:null);});
 
 document.getElementById('sfResendVerification')?.addEventListener('click',resendCurrentVerificationEmail);
 document.getElementById('sfVerifyCode')?.addEventListener('click',verifyEnteredCustomerCode);
