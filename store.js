@@ -64,7 +64,8 @@ function productCard(p){const stock=Math.max(0,Number(p.stock||0)),out=stock<1;r
 function preview(p){const body=document.getElementById('sfPreviewBody');if(!body)return;const list=imgs(p);body.innerHTML=`<div class="sf-preview-modal-content"><div><div class="sf-product-preview-large" id="previewMain">${mainPreview(p)}</div>${list.length>1?`<div class="sf-preview-gallery">${list.map((x,i)=>`<button type="button" data-gallery="${i}"><img src="${esc(x)}" alt="Preview ${i+1}"></button>`).join('')}</div>`:''}</div><div class="sf-preview-modal-copy"><span class="sf-work-tag">DIGITAL PRODUCT</span><h2>${esc(p.name)}</h2><p>${esc(p.description||'')}</p><div class="sf-checkout-price"><span>Fixed price</span><strong>${money(p.price,p.currency||'PHP')}</strong></div><button class="btn primary full" type="button" data-buy="${esc(p.id)}" ${Number(p.stock||0)<1?'disabled':''}>${Number(p.stock||0)<1?'Sold Out':'Buy to Unlock'} <span>→</span></button></div></div>`;document.getElementById('sfPreviewModal').hidden=false;activateLiveFallbacks(body);body.querySelectorAll('[data-gallery]').forEach(b=>b.addEventListener('click',()=>{const i=Number(b.dataset.gallery),m=document.getElementById('previewMain');if(m&&list[i])m.innerHTML=`<img src="${esc(list[i])}" alt="Preview ${i+1}">`}));body.querySelector('[data-buy]')?.addEventListener('click',()=>openCheckout(p));}
 let authMode='login';
 function authStatus(text,error=false){const el=document.getElementById('sfAuthStatus');if(!el)return;el.textContent=text;el.hidden=false;el.classList.toggle('error',error)}
-function showVerificationSent(email){const el=document.getElementById('sfAuthStatus');if(!el)return;el.innerHTML=`<strong>Account created successfully.</strong><br><br>1. Open Gmail and find the STEADFAST verification email.<br>2. Click <strong>VERIFY MY EMAIL</strong>.<br>3. You will be returned to STEADFAST and can sign in with your username or email.<br><br><button type="button" class="btn ghost full" id="sfOpenGmail">Open Gmail →</button>`;el.hidden=false;el.classList.remove('error');document.getElementById('sfOpenGmail')?.addEventListener('click',()=>window.location.href='https://mail.google.com/mail/u/0/#inbox');}
+function showVerificationSent(email){const el=document.getElementById('sfAuthStatus');if(!el)return;el.innerHTML=`<strong>Account created successfully.</strong><br><br>1. Open Gmail and find the STEADFAST verification email.<br>2. Click <strong>VERIFY MY EMAIL</strong>.<br>3. You will be returned to STEADFAST and can sign in with your username or email.<br><br><button type="button" class="btn ghost full" id="sfOpenGmail">Open Gmail →</button>`;el.hidden=false;el.classList.remove('error');document.getElementById('sfOpenGmail')?.addEventListener('click',()=>window.location.href='https://mail.google.com/mail/u/0/#inbox');
+          document.getElementById('sfResendVerification')?.addEventListener('click',async()=>{const btn=document.getElementById('sfResendVerification');try{btn.disabled=true;btn.textContent='Sending…';const current=auth.currentUser;if(!current){btn.disabled=false;btn.textContent='Try sending verification email again';authStatus('Please sign in first so we can resend the verification email.',true);return}await sendEmailVerification(current);btn.textContent='Verification email sent ✓';authStatus('Verification email sent. Please check your inbox and Spam/Junk folder.');}catch(e){console.error('Resend verification failed:',e);btn.disabled=false;btn.textContent='Try sending verification email again';authStatus('Firebase could not send the verification email: '+String(e?.message||e),true);}});}
 function setAuthBusy(busy){const btn=document.getElementById('sfAuthSubmit');if(!btn)return;btn.disabled=busy;btn.classList.toggle('is-loading',busy);btn.dataset.originalText=btn.dataset.originalText||btn.textContent;if(busy){btn.innerHTML='<span class="sf-auth-spinner" aria-hidden="true"></span> Please wait…';}else{btn.textContent=btn.dataset.originalText;delete btn.dataset.originalText;}}
 function showCustomerLoginSuccess(){const modal=document.getElementById('sfCustomerSuccessModal');if(!modal)return;modal.hidden=false;document.body.classList.add('modal-open');}
 function closeCustomerLoginSuccess(){const modal=document.getElementById('sfCustomerSuccessModal');if(modal)modal.hidden=true;if(!document.querySelector('.sf-modal:not([hidden])'))document.body.classList.remove('modal-open');}
@@ -125,8 +126,7 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
         let verificationSent=true;
         let verificationError='';
         try{
-          const actionCodeSettings={url:'https://steadfast-cliffjandee.pages.dev/store.html?verified=1',handleCodeInApp:false};
-          await sendEmailVerification(user,actionCodeSettings);
+          await sendEmailVerification(user);
         }catch(emailError){
           verificationSent=false;
           verificationError=String(emailError?.message||'Firebase could not send the verification email.');
@@ -143,10 +143,11 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
         const st=document.getElementById('sfAuthStatus');
         if(st){
           st.innerHTML=verificationSent
-            ? `<strong>Account created successfully.</strong><br><br>1. Open Gmail/email and find the Firebase verification email.<br>2. Click <strong>VERIFY MY EMAIL</strong>.<br>3. Return to STEADFAST and sign in with your username or email.<br><br><button type="button" class="btn ghost full" id="sfOpenGmail">Open Gmail →</button>`
-            : `<strong>Account created successfully.</strong><br><br>The account and username were saved. The verification email could not be sent yet.<br><small>${esc(verificationError)}</small>`;
+            ? `<strong>Account created successfully.</strong><br><br>1. Open Gmail/email and find the Firebase verification email.<br>2. Click <strong>VERIFY MY EMAIL</strong>.<br>3. Return to STEADFAST and sign in with your username or email.<br><br><button type="button" class="btn ghost full" id="sfOpenGmail">Open Gmail →</button><button type="button" class="btn ghost full" id="sfResendVerification" style="margin-top:8px">Resend verification email</button>`
+            : `<strong>Account created successfully.</strong><br><br>The account and username were saved, but Firebase could not send the verification email.<br><small>${esc(verificationError)}</small><br><br><button type="button" class="btn ghost full" id="sfResendVerification">Try sending verification email again</button>`;
           st.hidden=false;st.classList.remove('error');
           document.getElementById('sfOpenGmail')?.addEventListener('click',()=>window.location.href='https://mail.google.com/mail/u/0/#inbox');
+          document.getElementById('sfResendVerification')?.addEventListener('click',async()=>{const btn=document.getElementById('sfResendVerification');try{btn.disabled=true;btn.textContent='Sending…';const current=auth.currentUser;if(!current){btn.disabled=false;btn.textContent='Try sending verification email again';authStatus('Please sign in first so we can resend the verification email.',true);return}await sendEmailVerification(current);btn.textContent='Verification email sent ✓';authStatus('Verification email sent. Please check your inbox and Spam/Junk folder.');}catch(e){console.error('Resend verification failed:',e);btn.disabled=false;btn.textContent='Try sending verification email again';authStatus('Firebase could not send the verification email: '+String(e?.message||e),true);}});
         }
         return;
       }catch(regErr){
@@ -174,7 +175,7 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
     const cred=await signInWithEmailAndPassword(auth,email,pw);
     await reload(cred.user);
     if(!cred.user.emailVerified){
-      await sendEmailVerification(cred.user,{url:'https://steadfast-cliffjandee.pages.dev/store.html?verified=1',handleCodeInApp:false}).catch(()=>{});
+      try{ await sendEmailVerification(cred.user); }catch(emailErr){ console.error('Resend verification failed:',emailErr); }
       await signOut(auth);
       authStatus('Your email is not verified yet. We sent another verification link to '+email+'. Verify it first, then sign in again.',true);
       return;
