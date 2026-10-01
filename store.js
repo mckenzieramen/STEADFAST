@@ -84,13 +84,9 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
         if(!result?.data?.ok)throw new Error(result?.data?.message||'The account could not be created.');
         resetCustomerRecaptcha();
         setAuthBusy(false);
-        document.getElementById('sfAuthTitle').textContent='Verify your email first.';
-        const verificationSent = result?.data?.verificationSent !== false;
-        document.getElementById('sfAuthIntro').textContent = verificationSent
-          ? 'Your account is created. We sent a verification link to your Gmail/email. Open Gmail, click VERIFY MY EMAIL, then return here to sign in.'
-          : 'Your account is created and saved. The verification email could not be sent yet. Please contact support or use the resend verification option.';
-        document.getElementById('sfAuthSubmit').textContent='Sign in →';
-        showVerificationSent(email);
+        setAuthMode('login');
+        document.getElementById('sfAuthEmail').value=email;
+        authStatus('Account created successfully. Your account is active now. You can sign in using your username or email.');
         return;
       }catch(regErr){
         console.error('Customer registration failed:',regErr);
@@ -116,14 +112,6 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
     authStatus('Signing you in…');
     const cred=await signInWithEmailAndPassword(auth,email,pw);
     await reload(cred.user);
-    if(!cred.user.emailVerified){
-      const profileSnap=await getDoc(doc(db,'customerProfiles',cred.user.uid)).catch(()=>null);
-      const profileData=profileSnap?.exists()?profileSnap.data():{};
-      await sendVerification(cred.user,profileData).catch(()=>{});
-      await signOut(auth);
-      authStatus('Your email is not verified yet. We sent another verification link to '+email+'. Verify it first, then sign in again.',true);
-      return;
-    }
     authStatus('Sign in successful.');
     closeCustomerAuth();
     setAuthBusy(false);
@@ -149,11 +137,6 @@ function openCheckout(p){
     openCustomerAuth('login');
     return;
   }
-  if(!user.emailVerified){
-    openCustomerAuth('login');
-    authStatus('Please verify your email before purchasing.');
-    return;
-  }
   const code=p.accessCodeHash||"";const modal=document.getElementById('sfPreviewModal'),body=document.getElementById('sfPreviewBody');
   body.innerHTML=`<div class="sf-preview-modal-copy"><span class="sf-work-tag">SECURE PRODUCT CHECKOUT</span><h2>${esc(p.name)}</h2><p>${esc(p.description||'')}</p><div class="sf-checkout-price"><span>Fixed price</span><strong>${money(p.price,p.currency||'PHP')}</strong></div><form id="sfOrderForm" class="sf-checkout-copy form-like">${code?`<label>Access code<input name="accessCode" required autocomplete="off" placeholder="Enter access code"></label>`:''}<label>Name<input name="name" required placeholder="Your name"></label><label>Email<input name="email" type="email" value="${esc(user.email||'')}" readonly></label><button class="btn primary full" type="submit">Proceed to Payment <span>→</span></button><small>Your account email will be attached to this order. Payment proof is reviewed manually before unlocking.</small></form></div>`;
   modal.hidden=false;body.querySelector('#sfOrderForm').addEventListener('submit',async e=>{e.preventDefault();const fd=new FormData(e.currentTarget);if(p.accessCodeHash){const entered=await hashCode(String(fd.get('accessCode')||''));if(entered!==p.accessCodeHash){showSystemError('Invalid access code.','The access code does not match this product.');return}}try{const orderRef=doc(collection(db,'storeOrders'));const checkoutRef=doc(db,'storeCheckout',orderRef.id);const createdAt=serverTimestamp();const batch=writeBatch(db);batch.set(orderRef,{productId:p.id,productName:p.name,customerName:String(fd.get('name')),customerEmail:user.email.trim().toLowerCase(),customerUid:user.uid,amount:Number(p.price||0),currency:p.currency||'PHP',paymentMethod:p.paymentMethod||'Manual verification',paymentUrl:p.paymentUrl||'',mariBankLink:p.mariBankLink||'',unlockUrl:p.unlockUrl||'',accessUsername:p.accessUsername||'',accessPassword:p.accessPassword||'',previewUrl:p.previewUrl||'',previewImages:imgs(p),description:p.description||'',status:'pending',createdAt});batch.set(checkoutRef,{productName:p.name,customerName:String(fd.get('name')),customerUid:user.uid,description:p.description||'',amount:Number(p.price||0),currency:p.currency||'PHP',paymentMethod:p.paymentMethod||'Manual verification',paymentUrl:p.paymentUrl||'',mariBankLink:p.mariBankLink||'',unlockUrl:p.unlockUrl||'',status:'pending',createdAt});await batch.commit();location.href=`pay.html?order=${encodeURIComponent(orderRef.id)}`;}catch(err){console.error(err);showSystemError('Could not create checkout order.',`Problem identified: ${err?.code||err?.message||'temporary Firebase error'}`);}})
@@ -164,6 +147,6 @@ function loadStore(){const grid=document.getElementById('steadfastStoreGrid');if
 document.addEventListener('click',e=>{const close=e.target.closest('[data-close-preview]');if(close)document.getElementById('sfPreviewModal').hidden=true;const pb=e.target.closest('[data-preview]');if(pb)preview(products.find(p=>p.id===pb.dataset.preview));const buy=e.target.closest('[data-buy]');if(buy&&!buy.closest('#sfPreviewBody'))openCheckout(products.find(p=>p.id===buy.dataset.buy));});
 loadStore();
 
-onAuthStateChanged(auth,async u=>{if(u){await reload(u).catch(()=>{});if(!u.emailVerified){await signOut(auth).catch(()=>{});updateStoreAccount(null);return;}}updateStoreAccount(u);});
+onAuthStateChanged(auth,async u=>{if(u){await reload(u).catch(()=>{});}updateStoreAccount(u);});
 const params=new URLSearchParams(location.search);if(params.get('auth')==='login')setTimeout(()=>openCustomerAuth('login'),150);if(params.get('verified')==='1')setTimeout(()=>{openCustomerAuth('login');authStatus('Email verification completed. You can now sign in with your email and password.');},200);
 

@@ -218,7 +218,8 @@ exports.registerCustomer = onCall({ secrets: [recaptchaSecret] }, async (request
     userRecord = await admin.auth().createUser({
       email,
       password,
-      displayName: `${firstName} ${lastName}`.trim()
+      displayName: `${firstName} ${lastName}`.trim(),
+      emailVerified: true
     });
   } catch (error) {
     if (error && error.code === 'auth/email-already-exists') {
@@ -236,29 +237,9 @@ exports.registerCustomer = onCall({ secrets: [recaptchaSecret] }, async (request
       tx.set(usernameRef, { email, uid: userRecord.uid, createdAt: now });
     });
 
-    if (!BRIDGE_URL) throw new Error('STEADFAST Gmail Bridge URL is not configured.');
-    const verificationUrl = await admin.auth().generateEmailVerificationLink(email, {
-      url: CONTINUE_URL,
-      handleCodeInApp: false
-    });
-    const body = new URLSearchParams({
-      action: 'sendVerificationEmail',
-      customerEmail: email,
-      firstName,
-      lastName,
-      verificationUrl
-    }).toString();
-    const response = await fetch(BRIDGE_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-      body
-    });
-    const raw = await response.text();
-    let bridgeResult;
-    try { bridgeResult = JSON.parse(raw); } catch (_) { bridgeResult = { ok: false, error: raw }; }
-    if (!response.ok || !bridgeResult.ok) {
-      throw new Error(bridgeResult.error || 'The verification email could not be sent.');
-    }
+    // Email verification is intentionally not required. The account is marked verified at creation.
+    // The Gmail Bridge remains available for other verification-related functions.
+
   } catch (error) {
     console.error('registerCustomer profile/email failed:', error);
     try { await db.recursiveDelete(profileRef); } catch (_) {}
@@ -267,7 +248,7 @@ exports.registerCustomer = onCall({ secrets: [recaptchaSecret] }, async (request
     throw new HttpsError('internal', error?.message || 'The account was not completed because the verification email could not be sent.');
   }
 
-  return { ok: true, email, username };
+  return { ok: true, email, username, emailVerified: true, verificationRequired: false };
 });
 
 exports.verifyCustomerHuman = onCall({ secrets: [recaptchaSecret] }, async (request) => {
