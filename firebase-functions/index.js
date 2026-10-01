@@ -229,18 +229,50 @@ exports.registerCustomer = onCall({ secrets: [recaptchaSecret] }, async (request
   }
 
   const profileRef = db.doc(`customerProfiles/${userRecord.uid}`);
+
+  // Save the account profile first. A mail-service problem must never undo a
+  // successfully created Firebase Authentication account.
   try {
     const now = admin.firestore.FieldValue.serverTimestamp();
     await db.runTransaction(async tx => {
-      tx.set(profileRef, { uid: userRecord.uid, firstName, lastName, email, username, createdAt: now });
-      tx.set(usernameRef, { email, uid: userRecord.uid, createdAt: now });
+      tx.set(profileRef, {
+        uid: userRecord.uid,
+        firstName,
+        lastName,
+        email,
+        username,
+        createdAt: now
+      });
+      tx.set(usernameRef, {
+        email,
+        uid: userRecord.uid,
+        createdAt: now
+      });
     });
+  } catch (error) {
+    console.error('registerCustomer profile save failed:', error);
+    try { await db.recursiveDelete(profileRef); } catch (_) {}
+    try { await db.recursiveDelete(usernameRef); } catch (_) {}
+    try { await admin.auth().deleteUser(userRecord.uid); } catch (_) {}
+    throw new HttpsError('internal', 'The account was created in Firebase, but the customer profile could not be saved. Please try again.');
+  }
 
-    if (!BRIDGE_URL) throw new Error('STEADFAST Gmail Bridge URL is not configured.');
+  // Verification email is intentionally non-fatal. If the Gmail Bridge is
+  // missing or temporarily unavailable, keep the account and tell the client
+  // that the email still needs to be sent. This prevents the old
+  // "internal [0]" account-creation failure and avoids deleting the user.
+  let verificationSent = false;
+  let verificationError = '';
+  try {
+    if (!BRIDGE_URL) {
+      throw new Error('STEADFAST Gmail Bridge URL is not configured.');
+    }
+
     const verificationUrl = await admin.auth().generateEmailVerificationLink(email, {
       url: CONTINUE_URL,
       handleCodeInApp: false
     });
+
     const body = new URLSearchParams({
       action: 'sendVerificationEmail',
       customerEmail: email,
@@ -248,26 +280,39 @@ exports.registerCustomer = onCall({ secrets: [recaptchaSecret] }, async (request
       lastName,
       verificationUrl
     }).toString();
+
     const response = await fetch(BRIDGE_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
       body
     });
+
     const raw = await response.text();
     let bridgeResult;
-    try { bridgeResult = JSON.parse(raw); } catch (_) { bridgeResult = { ok: false, error: raw }; }
-    if (!response.ok || !bridgeResult.ok) {
-      throw new Error(bridgeResult.error || 'The verification email could not be sent.');
+    try {
+      bridgeResult = JSON.parse(raw);
+    } catch (_) {
+      bridgeResult = { ok: false, error: raw };
     }
+
+    if (!response.ok || !bridgeResult.ok) {
+      throw new Error(bridgeResult.error || `The verification email service returned HTTP ${response.status}.`);
+    }
+
+    verificationSent = true;
   } catch (error) {
-    console.error('registerCustomer profile/email failed:', error);
-    try { await db.recursiveDelete(profileRef); } catch (_) {}
-    try { await db.recursiveDelete(usernameRef); } catch (_) {}
-    try { await admin.auth().deleteUser(userRecord.uid); } catch (_) {}
-    throw new HttpsError('internal', error?.message || 'The account was not completed because the verification email could not be sent.');
+    verificationError = String(error?.message || 'The verification email could not be sent.');
+    console.error('registerCustomer verification email failed:', verificationError);
   }
 
-  return { ok: true, email, username };
+  return {
+    ok: true,
+    email,
+    username,
+    uid: userRecord.uid,
+    verificationSent,
+    verificationError: verificationSent ? '' : verificationError
+  };
 });
 
 exports.verifyCustomerHuman = onCall({ secrets: [recaptchaSecret] }, async (request) => {
