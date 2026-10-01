@@ -1,0 +1,194 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // =====================================================
+    // ADMIN
+    // =====================================================
+
+    function isAdmin() {
+      return request.auth != null
+        && request.auth.token.email == 'yahhclffjnd@gmail.com';
+    }
+
+    // =====================================================
+    // VERIFIED CUSTOMER
+    // =====================================================
+
+    function isVerifiedCustomer() {
+      return request.auth != null
+        && request.auth.token.email_verified == true;
+    }
+
+    // =====================================================
+    // CUSTOMER OWNS THE ORDER
+    // =====================================================
+
+    function ownsOrder() {
+      return isVerifiedCustomer()
+        && resource.data.customerUid == request.auth.uid;
+    }
+
+    // =====================================================
+    // STEADFAST PROJECTS / WORKS
+    // =====================================================
+
+    match /portfolioProjects/{projectId} {
+      allow read: if isAdmin()
+        || resource.data.published == true;
+
+      allow create, update, delete: if isAdmin();
+    }
+
+    // =====================================================
+    // STEADFAST STORE PRODUCTS
+    // =====================================================
+
+    match /storeProducts/{productId} {
+      allow read: if isAdmin()
+        || resource.data.active == true;
+
+      allow create, update, delete: if isAdmin();
+    }
+
+    // =====================================================
+    // STORE ORDERS
+    // =====================================================
+
+    match /storeOrders/{orderId} {
+
+      // Verified customer creates their own pending order.
+      allow create: if isVerifiedCustomer()
+        && request.resource.data.status == 'pending'
+        && request.resource.data.amount >= 0
+        && request.resource.data.customerUid == request.auth.uid
+        && request.resource.data.customerEmail == request.auth.token.email;
+
+      // Admin can see all orders.
+      allow read: if isAdmin();
+
+      // Customer can read their own order.
+      allow get: if ownsOrder();
+
+      // Admin can update orders/status.
+      allow update: if isAdmin();
+
+      // Verified customer can submit payment proof for their own order.
+      // Only the payment-proof fields may change.
+      allow update: if ownsOrder()
+        && request.resource.data.customerUid == resource.data.customerUid
+        && request.resource.data.customerEmail == resource.data.customerEmail
+        && request.resource.data.status == 'verifying'
+        && resource.data.status in ['pending', 'failed']
+        && request.resource.data.diff(resource.data)
+          .affectedKeys()
+          .hasOnly([
+            'receiptUrl',
+            'receiptFileName',
+            'paymentStatus',
+            'status',
+            'updatedAt'
+          ]);
+
+      // Admin can delete orders.
+      allow delete: if isAdmin();
+    }
+
+    // =====================================================
+    // STORE CHECKOUT
+    // =====================================================
+
+    match /storeCheckout/{orderId} {
+      allow create: if isVerifiedCustomer()
+        && request.resource.data.customerUid == request.auth.uid;
+
+      allow read, update, delete: if isAdmin();
+
+      allow get: if isVerifiedCustomer()
+        && resource.data.customerUid == request.auth.uid;
+    }
+
+    // =====================================================
+    // CUSTOMER PROFILES / USERNAMES
+    // =====================================================
+
+    // The username alias is intentionally limited to the minimum
+    // fields needed to resolve username -> email during sign in.
+    match /customerUsernames/{username} {
+      allow read: if true;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.email == request.auth.token.email;
+
+      allow update, delete: if request.auth != null
+        && resource.data.uid == request.auth.uid;
+    }
+
+    match /customerProfiles/{uid} {
+      allow read: if isAdmin()
+        || (request.auth != null && request.auth.uid == uid);
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.uid == uid
+        && request.resource.data.email == request.auth.token.email;
+
+      allow update: if request.auth != null
+        && request.auth.uid == uid;
+      allow delete: if isAdmin()
+        || (request.auth != null && request.auth.uid == uid);
+    }
+
+    // =====================================================
+    // CUSTOMER PURCHASE ACCESS
+    // =====================================================
+
+    match /customerAccess/{accessId} {
+      allow read: if isVerifiedCustomer()
+        && resource.data.customerUid == request.auth.uid;
+
+      allow create, update, delete: if isAdmin();
+    }
+
+    // =====================================================
+    // PRODUCT REVIEWS
+    // =====================================================
+
+    match /productReviews/{reviewId} {
+      // Public can read reviews.
+      allow read: if true;
+
+      // Only a verified customer with a paid purchase access record
+      // for this exact product can create a review.
+      allow create: if isVerifiedCustomer()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.productId is string
+        && exists(
+          /databases/$(database)/documents/customerAccess/$(request.auth.uid + '_' + request.resource.data.productId)
+        )
+        && get(
+          /databases/$(database)/documents/customerAccess/$(request.auth.uid + '_' + request.resource.data.productId)
+        ).data.status == 'paid';
+
+      // Customer can update only their own review.
+      allow update: if isVerifiedCustomer()
+        && resource.data.userId == request.auth.uid
+        && request.resource.data.userId == request.auth.uid;
+
+      // Customer can delete only their own review; Admin can delete any review.
+      allow delete: if isAdmin()
+        || (
+          isVerifiedCustomer()
+          && resource.data.userId == request.auth.uid
+        );
+    }
+
+    // =====================================================
+    // DENY EVERYTHING ELSE
+    // =====================================================
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

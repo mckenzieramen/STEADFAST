@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="description" content="STEADFAST Store — digital products and practical website systems.">
+<title>STEADFAST Store — Digital Products</title>
+<link rel="icon" type="image/png" href="assets/favicon.png"><link rel="stylesheet" href="styles.css">
+<style>
+#sfCustomerAuthForm [hidden]{display:none !important;}
+</style>
+</head>
+<body><div id="sfSystemError" class="sf-system-error" hidden role="alert" aria-live="assertive"><div class="sf-system-error-icon">!</div><div class="sf-system-error-content"><strong>TEMPORARY ERROR</strong><span id="sfSystemErrorTitle">Something went wrong.</span><small id="sfSystemErrorDetail">Please try again.</small></div><button type="button" class="sf-system-error-close" id="sfSystemErrorClose" aria-label="Close error">×</button></div>
+<header class="site-header" id="top">
+<a aria-label="STEADFAST home" class="brand" href="index.html#home"><span class="brand-mark"><img alt="STEADFAST mark" src="assets/steadfast-mark.png"></span><span><b>STEADFAST</b><small>BY CLIFF JANDEE MEDRANO</small></span></a>
+<button aria-expanded="false" aria-label="Open navigation" class="menu-toggle">☰</button>
+<nav class="nav" id="nav"><a href="index.html#home">Home</a><a href="about.html">About</a><a href="index.html#services">Services</a><a href="index.html#work">Work</a><a class="active" href="store.html">Store</a><a href="reviews.html">Reviews</a><a href="index.html#quote" class="quote-nav-unavailable">Quote <span>Not Available</span></a><a class="nav-cta" href="index.html#contact">Let's Work Together <span>↗</span></a></nav>
+</header>
+<main>
+<section class="section sf-store-page-hero" style="display:block;padding-top:110px;padding-bottom:30px"><div class="section-head"><div><p class="eyebrow purple">STEADFAST STORE</p><h1>Digital products.<br><em>Ready to unlock.</em></h1></div><p>Preview each product, check the fixed price and purchase it through the STEADFAST checkout.</p></div><div class="sf-store-account-bar" id="storeAccountBar">
+  <div class="sf-store-account-copy">
+    <span class="eyebrow purple">CUSTOMER ACCOUNT</span>
+    <strong id="storeAccountTitle">Sign in to purchase</strong>
+    <span id="storeAccountDetail">You can browse the Store as a guest. An account is required only when you purchase.</span>
+  </div>
+  <div class="sf-store-account-actions" id="storeAccountActions">
+    <button class="btn primary" type="button" data-open-auth="login">Sign in</button>
+    <button class="btn ghost" type="button" data-open-auth="register">Create account</button>
+    <button class="btn ghost" type="button" data-guest-store>Visit as guest</button>
+  </div>
+</div>
+</section>
+<section class="section sf-store-section" style="display:block;padding-top:20px"><div class="sf-store-grid" id="steadfastStoreGrid"><div class="sf-loading">Loading products…</div></div></section>
+</main>
+<footer><a class="brand" href="index.html#home"><span class="brand-mark"><img alt="STEADFAST mark" src="assets/steadfast-mark.png"></span><span><b>STEADFAST</b><small>BY CLIFF JANDEE MEDRANO</small></span></a><div class="footer-links"><a href="index.html#home">Home</a><a href="about.html">About</a><a href="index.html#services">Services</a><a href="index.html#work">Work</a><a href="store.html">Store</a><a href="reviews.html">Reviews</a><a href="index.html#quote" class="quote-nav-unavailable">Quote <span>Not Available</span></a><a href="index.html#contact">Contact</a></div><div class="footer-right"><span>STEADFAST IN SERVICE.</span><span>DRIVEN BY PURPOSE.</span></div></footer>
+<div class="sf-modal" id="sfCustomerAuthModal" hidden>
+  <div class="sf-modal-backdrop" data-close-auth></div>
+  <div class="sf-modal-card sf-auth-modal-card" role="dialog" aria-modal="true" aria-labelledby="sfAuthTitle">
+    <button class="sf-modal-close" type="button" data-close-auth aria-label="Close">×</button>
+    <div class="sf-auth-modal-copy">
+      <span class="sf-work-tag">STEADFAST CUSTOMER</span>
+      <h2 id="sfAuthTitle">Sign in to purchase.</h2>
+      <p id="sfAuthIntro">Create an account with your email and password. We will send an email verification link before you can purchase or review.</p>
+      <div class="sf-auth-tabs" role="tablist">
+        <button class="active" type="button" data-auth-mode="login">Sign in</button>
+        <button type="button" data-auth-mode="register">Create account</button>
+      </div>
+      <form id="sfCustomerAuthForm" class="form-like">
+        <div id="sfRegisterNames" class="sf-register-name-grid" hidden><label>First Name<input id="sfAuthFirstName" type="text" autocomplete="given-name"></label><label>Last Name<input id="sfAuthLastName" type="text" autocomplete="family-name"></label></div>
+        <label id="sfUsernameWrap" hidden>Username / Email<input id="sfAuthEmail" type="text" autocomplete="username" placeholder="Enter your username or email" required><small class="sf-field-help">Use either your username or your email as your sign-in credential.</small></label>
+        <label id="sfRegisterEmailWrap" hidden>Email<input id="sfAuthRegisterEmail" type="email" autocomplete="email" placeholder="you@example.com"></label>
+        <label id="sfRegisterUsernameWrap" hidden>Username<input id="sfAuthUsername" type="text" autocomplete="username" placeholder="Choose a username"></label>
+        <label>Password<div class="sf-password-field"><input id="sfAuthPassword" type="password" autocomplete="current-password" minlength="6" required><button type="button" class="sf-password-toggle" data-toggle-password="sfAuthPassword" aria-label="Show password">Show</button></div></label>
+        <label id="sfAuthConfirmWrap" hidden>Confirm password<div class="sf-password-field"><input id="sfAuthConfirm" type="password" autocomplete="new-password" minlength="6"><button type="button" class="sf-password-toggle" data-toggle-password="sfAuthConfirm" aria-label="Show confirm password">Show</button></div></label>
+        <div id="sfHumanCheckWrap" class="sf-human-check-wrap" hidden><div id="sfRecaptcha" class="g-recaptcha" data-sitekey="6LdAQNctAAAAABIWeOxURloPVvhrvtGgTlGUsKpj"></div><small class="sf-captcha-note">Security verification is required to create a customer account. Google may ask you to select images when additional verification is needed.</small></div>
+        <button class="btn primary full" id="sfAuthSubmit" type="submit">Sign in →</button>
+        <div id="sfAuthStatus" class="sf-auth-status" hidden aria-live="polite"></div>
+      </form>
+      <div class="sf-auth-note">Email verification is required before purchasing or submitting a buyer review.</div><button class="btn ghost full" type="button" data-close-auth>Continue as guest</button>
+    </div>
+  </div>
+</div>
+<div class="sf-modal" id="sfCustomerSuccessModal" hidden>
+  <div class="sf-modal-backdrop" data-close-success></div>
+  <div class="sf-modal-card sf-success-modal-card" role="dialog" aria-modal="true" aria-labelledby="sfSuccessTitle">
+    <button class="sf-modal-close" type="button" data-close-success aria-label="Close">×</button>
+    <div class="sf-auth-success">
+      <div class="sf-success-icon">✓</div>
+      <span class="sf-work-tag">STEADFAST CUSTOMER</span>
+      <h2 id="sfSuccessTitle">You can now purchase digital products.</h2>
+      <p>Your account is signed in and ready. You can now browse the STEADFAST Store and purchase eligible digital products.</p>
+      <button class="btn primary full" type="button" data-close-success>Browse digital products →</button>
+    </div>
+  </div>
+</div>
+<div class="sf-modal" id="sfPreviewModal" hidden><div class="sf-modal-backdrop" data-close-preview></div><div class="sf-modal-card"><button class="sf-modal-close" type="button" data-close-preview aria-label="Close">×</button><div id="sfPreviewBody"></div></div></div>
+<script>window.STEADFAST_RECAPTCHA_SITE_KEY="6LdAQNctAAAAABIWeOxURloPVvhrvtGgTlGUsKpj";</script><script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script><script src="script.js"></script><script type="module" src="store.js?v=20261001-free-auth-v2"></script>
+</body></html>
