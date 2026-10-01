@@ -45,18 +45,19 @@ async function sendVerificationCode_(uid, email, firstName, lastName) {
     updatedAt: admin.firestore.FieldValue.serverTimestamp()
   }, { merge: true });
 
-  const body = new URLSearchParams({
+  const bridgeKey = 'bZjXVGe-_V-D8LD9GzvNYWnji5eUDyU3P4Cf8jMFAYRtAD64EsQ7jITqK3DOXtAo';
+  const bridgeUrl = `${BRIDGE_URL}?${new URLSearchParams({
     action: 'sendVerificationCode',
     customerEmail: email,
     firstName,
     lastName,
-    verificationCode: code
-  }).toString();
+    verificationCode: code,
+    bridgeKey
+  }).toString()}`;
 
-  const response = await fetch(BRIDGE_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-    body
+  const response = await fetch(bridgeUrl, {
+    method: 'GET',
+    redirect: 'follow'
   });
   const raw = await response.text();
   let bridgeResult;
@@ -69,7 +70,9 @@ async function sendVerificationCode_(uid, email, firstName, lastName) {
       verificationEmailError: String(bridgeResult.error || 'The STEADFAST verification email could not be sent.'),
       updatedAt: admin.firestore.FieldValue.serverTimestamp()
     }, { merge: true });
-    throw new HttpsError('internal', 'The STEADFAST verification email could not be sent.');
+    const detail = String(bridgeResult.error || 'The STEADFAST Gmail Bridge could not send the verification code.').trim();
+    console.error('STEADFAST Gmail Bridge verification send failed:', detail);
+    throw new HttpsError('internal', detail);
   }
 
   await registrationRef.set({

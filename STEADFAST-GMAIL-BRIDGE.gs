@@ -16,14 +16,28 @@
 const ADMIN_EMAIL = 'yahhclffjnd@gmail.com';
 const BRAND_NAME = 'STEADFAST by Cliff Jandee Medrano';
 const DISCOUNT_TEXT = 'Exclusive offer: UP TO 75% OFF your website project, subject to final scope, review, and eligibility.';
+const VERIFICATION_BRIDGE_KEY = 'bZjXVGe-_V-D8LD9GzvNYWnji5eUDyU3P4Cf8jMFAYRtAD64EsQ7jITqK3DOXtAo';
 
 function doGet(e) {
-  return json_({
-    ok: true,
-    service: 'STEADFAST Gmail Bridge',
-    status: 'ready',
-    adminEmail: ADMIN_EMAIL
-  });
+  try {
+    const p = (e && e.parameter) ? e.parameter : {};
+    const action = String(p.action || '').trim();
+    if (action === 'sendVerificationCode') {
+      if (String(p.bridgeKey || '') !== VERIFICATION_BRIDGE_KEY) {
+        return json_({ ok: false, error: 'Unauthorized verification request.' });
+      }
+      return sendVerificationEmail_(p);
+    }
+    return json_({
+      ok: true,
+      service: 'STEADFAST Gmail Bridge',
+      status: 'ready',
+      adminEmail: ADMIN_EMAIL
+    });
+  } catch (err) {
+    console.error(err);
+    return json_({ ok: false, error: String(err && err.message || err) });
+  }
 }
 
 function doPost(e) {
@@ -33,7 +47,12 @@ function doPost(e) {
 
     if (action === 'sendQuoteEmail') return sendQuoteEmail_(p);
     if (action === 'sendEmail') return sendAdminEmail_(p);
-    if (action === 'sendVerificationEmail' || action === 'sendVerificationCode') return sendVerificationEmail_(p);
+    if (action === 'sendVerificationEmail' || action === 'sendVerificationCode') {
+      if (String(p.bridgeKey || '') !== VERIFICATION_BRIDGE_KEY) {
+        return json_({ ok: false, error: 'Unauthorized verification request.' });
+      }
+      return sendVerificationEmail_(p);
+    }
     if (action === 'paymentSubmitted') return sendPaymentSubmittedEmail_(p);
     if (action === 'paymentVerified') return sendPaymentVerifiedEmail_(p);
     if (action === 'paymentFailed') return sendPaymentFailedEmail_(p);
@@ -68,6 +87,15 @@ function authorizeAndTest() {
   });
 
   return 'Test email sent to ' + ADMIN_EMAIL;
+}
+
+function testVerificationCodeEmail() {
+  return sendVerificationEmail_({
+    customerEmail: ADMIN_EMAIL,
+    firstName: 'Cliff',
+    lastName: 'Jandee',
+    verificationCode: '123456'
+  });
 }
 
 function sendQuoteEmail_(p) {
