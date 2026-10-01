@@ -201,39 +201,53 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
           new Promise((_,reject)=>setTimeout(()=>reject(new Error('Account creation timed out. Please try again.')),30000))
         ]);
         const user=cred.user;
-        await Promise.race([
+
+        // Do not block the verification UI on Firestore writes. The Apps Script
+        // verification-code endpoint only needs the Firebase ID token, so the
+        // profile/username writes and code delivery can safely run in parallel.
+        const profilePromise=Promise.race([
           Promise.all([
             setDoc(doc(db,'customerProfiles',user.uid),{uid:user.uid,firstName:first,lastName:last,email,username,createdAt:serverTimestamp(),updatedAt:serverTimestamp()},{merge:true}),
             setDoc(doc(db,'customerUsernames',username),{uid:user.uid,email,updatedAt:serverTimestamp()},{merge:true})
           ]),
-          new Promise((_,reject)=>setTimeout(()=>reject(new Error('Customer profile storage timed out. Please try again.')),15000))
+          new Promise((_,reject)=>setTimeout(()=>reject(new Error('Customer profile storage timed out. The account was created, but the profile is still syncing.')),15000))
         ]);
+
+        const verificationPromise=requestVerificationCode(user,first,last);
+
         resetCustomerRecaptcha();
         setAuthBusy(false);
         closeCustomerAuth();
 
-        // Show the 6-digit verification window immediately. Email delivery continues in the background.
+        // Open the 6-digit verification window immediately after Firebase Auth
+        // creates the account. Do not wait for Firestore or Gmail delivery.
         showEmailVerificationModal(email,'Account created successfully. Preparing your 6-digit verification code…');
         const resendButton=document.getElementById('sfResendVerification');
         const verificationStatus=document.getElementById('sfVerificationStatus');
         if(resendButton){resendButton.disabled=true;resendButton.textContent='Sending…';}
-        try{
-          await requestVerificationCode(user,first,last);
+
+        verificationPromise.then(()=>{
           if(verificationStatus){
             verificationStatus.innerHTML=`A 6-digit verification code was sent to <strong>${esc(email)}</strong>.`;
             verificationStatus.hidden=false;
             verificationStatus.classList.remove('error');
           }
-        }catch(sendErr){
+        }).catch(sendErr=>{
           console.error('Initial verification email failed:',sendErr);
           if(verificationStatus){
             verificationStatus.textContent=String(sendErr?.message||'The verification code could not be sent yet. Please use Resend Verification Code.');
             verificationStatus.hidden=false;
             verificationStatus.classList.add('error');
           }
-        }finally{
+        }).finally(()=>{
           if(resendButton){resendButton.disabled=false;resendButton.textContent='Resend Verification Code';}
-        }
+        });
+
+        profilePromise.catch(profileErr=>{
+          console.error('Customer profile storage failed:',profileErr);
+          showSystemError('Account created, but profile sync is delayed.',String(profileErr?.message||'The customer profile could not be saved yet.'));
+        });
+
         return;
       }catch(regErr){
         console.error('Customer registration failed:',regErr);
