@@ -1,11 +1,10 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, reload, getIdToken } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut, reload } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
 import { getFirestore, collection, addDoc, setDoc, getDoc, doc, serverTimestamp, onSnapshot, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 const firebaseConfig={apiKey:"AIzaSyD13MXR0ZQSjPJBxQKYPmsMKjl4yzU2hSs",authDomain:"steadfast-1d0e6.firebaseapp.com",projectId:"steadfast-1d0e6",storageBucket:"steadfast-1d0e6.firebasestorage.app",messagingSenderId:"488385339804",appId:"1:488385339804:web:0d2bcf3967a8f95ccfe859"};
 const customerApp=getApps().find(a=>a.name==="steadfastCustomer")||initializeApp(firebaseConfig,"steadfastCustomer"),db=getFirestore(customerApp),auth=getAuth(customerApp),functions=getFunctions(customerApp,"asia-southeast1");
 const sendCustomerVerificationEmail=httpsCallable(functions,"sendCustomerVerificationEmail");
-const verifyCustomerEmailCode=httpsCallable(functions,"verifyCustomerEmailCode");
 let recaptchaWidgetId=null;
 let recaptchaRenderPromise=null;
 function renderCustomerRecaptcha(){
@@ -67,65 +66,14 @@ function productCard(p){const stock=Math.max(0,Number(p.stock||0)),out=stock<1;r
 function preview(p){const body=document.getElementById('sfPreviewBody');if(!body)return;const list=imgs(p);body.innerHTML=`<div class="sf-preview-modal-content"><div><div class="sf-product-preview-large" id="previewMain">${mainPreview(p)}</div>${list.length>1?`<div class="sf-preview-gallery">${list.map((x,i)=>`<button type="button" data-gallery="${i}"><img src="${esc(x)}" alt="Preview ${i+1}"></button>`).join('')}</div>`:''}</div><div class="sf-preview-modal-copy"><span class="sf-work-tag">DIGITAL PRODUCT</span><h2>${esc(p.name)}</h2><p>${esc(p.description||'')}</p><div class="sf-checkout-price"><span>Fixed price</span><strong>${money(p.price,p.currency||'PHP')}</strong></div><button class="btn primary full" type="button" data-buy="${esc(p.id)}" ${Number(p.stock||0)<1?'disabled':''}>${Number(p.stock||0)<1?'Sold Out':'Buy to Unlock'} <span>→</span></button></div></div>`;document.getElementById('sfPreviewModal').hidden=false;activateLiveFallbacks(body);body.querySelectorAll('[data-gallery]').forEach(b=>b.addEventListener('click',()=>{const i=Number(b.dataset.gallery),m=document.getElementById('previewMain');if(m&&list[i])m.innerHTML=`<img src="${esc(list[i])}" alt="Preview ${i+1}">`}));body.querySelector('[data-buy]')?.addEventListener('click',()=>openCheckout(p));}
 let authMode='login';
 function authStatus(text,error=false){const el=document.getElementById('sfAuthStatus');if(!el)return;el.textContent=text;el.hidden=false;el.classList.toggle('error',error)}
-function showVerificationSent(email){
-  const el=document.getElementById('sfAuthStatus');
-  if(!el)return;
-  el.innerHTML=`<strong>Account created successfully.</strong><br><br>We sent a 6-digit verification code to <strong>${esc(email)}</strong>.<br>Enter the code in the verification window to activate your account.`;
-  el.hidden=false;el.classList.remove('error');
-}
+function showVerificationSent(email){const el=document.getElementById('sfAuthStatus');if(!el)return;el.innerHTML=`<strong>Account created successfully.</strong><br><br>1. Open Gmail and find the STEADFAST verification email.<br>2. Click <strong>VERIFY MY EMAIL</strong>.<br>3. You will be returned to STEADFAST and can sign in with your username or email.<br><br><button type="button" class="btn ghost full" id="sfOpenGmail">Open Gmail →</button>`;el.hidden=false;el.classList.remove('error');document.getElementById('sfOpenGmail')?.addEventListener('click',()=>window.location.href='https://mail.google.com/mail/u/0/#inbox');}
 function setAuthBusy(busy){const btn=document.getElementById('sfAuthSubmit');if(!btn)return;btn.disabled=busy;btn.classList.toggle('is-loading',busy);btn.dataset.originalText=btn.dataset.originalText||btn.textContent;if(busy){btn.innerHTML='<span class="sf-auth-spinner" aria-hidden="true"></span> Please wait…';}else{btn.textContent=btn.dataset.originalText;delete btn.dataset.originalText;}}
 function showCustomerLoginSuccess(){const modal=document.getElementById('sfCustomerSuccessModal');if(!modal)return;modal.hidden=false;document.body.classList.add('modal-open');}
 function closeCustomerLoginSuccess(){const modal=document.getElementById('sfCustomerSuccessModal');if(modal)modal.hidden=true;if(!document.querySelector('.sf-modal:not([hidden])'))document.body.classList.remove('modal-open');}
-function showEmailVerificationModal(email,notice=''){
-  const modal=document.getElementById('sfEmailVerificationModal'),text=document.getElementById('sfVerificationText'),status=document.getElementById('sfVerificationStatus'),btn=document.getElementById('sfResendVerification'),input=document.getElementById('sfVerificationCode');
-  if(!modal)return;
-  const safeEmail=String(email||'your email').trim();
-  if(text)text.innerHTML=`We sent a <strong>6-digit verification code</strong> to <strong>${esc(safeEmail)}</strong>.<br><br>Enter the code below to verify your email. The code expires in <strong>10 minutes</strong>.`;
-  if(input){input.value='';input.focus();}
-  if(status){status.hidden=!notice;status.textContent=notice;status.classList.toggle('error',/could not|incorrect|expired|too many|error/i.test(notice));}
-  if(btn){btn.disabled=false;btn.textContent='Resend Verification Code';}
-  modal.hidden=false;document.body.classList.add('modal-open');
-}
+function showEmailVerificationModal(email){const modal=document.getElementById('sfEmailVerificationModal');const text=document.getElementById('sfVerificationText');const status=document.getElementById('sfVerificationStatus');const btn=document.getElementById('sfResendVerification');if(!modal)return;const safeEmail=String(email||'your email').trim();if(text)text.innerHTML=`We sent a verification link to <strong>${esc(safeEmail)}</strong>.<br><br>Open your email, click <strong>VERIFY MY EMAIL</strong>, then return to STEADFAST and sign in again. You must verify your email before you can purchase.`;if(status){status.hidden=true;status.textContent='';status.classList.remove('error')}if(btn){btn.disabled=false;btn.textContent='Resend Verification Email'}modal.hidden=false;document.body.classList.add('modal-open');}
 function closeEmailVerificationModal(){const modal=document.getElementById('sfEmailVerificationModal');if(modal)modal.hidden=true;if(!document.querySelector('.sf-modal:not([hidden])'))document.body.classList.remove('modal-open');}
-async function resendCurrentVerificationEmail(){
-  const user=auth.currentUser,btn=document.getElementById('sfResendVerification'),status=document.getElementById('sfVerificationStatus');
-  if(!user){if(status){status.textContent='Please sign in again so we can send a verification code.';status.hidden=false;status.classList.add('error')}return}
-  await reload(user);
-  if(user.emailVerified){closeEmailVerificationModal();authStatus('Your email is already verified. You can now sign in and purchase.');return}
-  if(btn){btn.disabled=true;btn.textContent='Sending…'}
-  if(status){status.hidden=true;status.textContent='';status.classList.remove('error')}
-  try{
-    const result=await sendCustomerVerificationEmail({});
-    if(result?.data?.sent||result?.data?.ok){
-      if(status){status.innerHTML=`A new 6-digit verification code was sent to <strong>${esc(user.email||'your email')}</strong>.`;status.hidden=false;status.classList.remove('error');}
-      document.getElementById('sfVerificationCode')?.focus();
-    }else throw new Error('The verification code was not confirmed by STEADFAST.');
-  }catch(err){console.error('Resend verification code failed:',err);if(status){status.textContent=String(err?.message||'We could not send the verification code right now.');status.hidden=false;status.classList.add('error')}}
-  finally{if(btn){btn.disabled=false;btn.textContent='Resend Verification Code'}}
-}
-async function verifyEnteredCustomerCode(){
-  const input=document.getElementById('sfVerificationCode'),btn=document.getElementById('sfVerifyCode'),status=document.getElementById('sfVerificationStatus');
-  const code=String(input?.value||'').replace(/\D/g,'').slice(0,6);
-  if(input)input.value=code;
-  if(!/^\d{6}$/.test(code)){if(status){status.textContent='Enter the complete 6-digit verification code.';status.hidden=false;status.classList.add('error')}return}
-  if(btn){btn.disabled=true;btn.textContent='Verifying…'}
-  if(status){status.hidden=true;status.textContent='';status.classList.remove('error')}
-  try{
-    const result=await verifyCustomerEmailCode({code});
-    if(!result?.data?.verified)throw new Error('The verification could not be confirmed.');
-    const user=auth.currentUser;
-    if(user){await reload(user);await getIdToken(user,true);}
-    closeEmailVerificationModal();
-    authStatus('Email verified successfully. You can now purchase and submit eligible buyer reviews.');
-    closeCustomerAuth();
-    setTimeout(showCustomerLoginSuccess,120);
-  }catch(err){
-    console.error('Verification code failed:',err);
-    const msg=String(err?.message||'The verification code could not be confirmed.');
-    if(status){status.textContent=msg;status.hidden=false;status.classList.add('error')}
-  }finally{if(btn){btn.disabled=false;btn.textContent='Verify Email'}}
-}
-function setAuthMode(mode){authMode=mode==='register'?'register':'login';const reg=authMode==='register';document.querySelectorAll('[data-auth-mode]').forEach(b=>b.classList.toggle('active',b.dataset.authMode===authMode));const title=document.getElementById('sfAuthTitle'),intro=document.getElementById('sfAuthIntro'),submit=document.getElementById('sfAuthSubmit'),confirm=document.getElementById('sfAuthConfirmWrap'),pw=document.getElementById('sfAuthPassword'),names=document.getElementById('sfRegisterNames'),username=document.getElementById('sfRegisterUsernameWrap'),registerEmail=document.getElementById('sfRegisterEmailWrap'),human=document.getElementById('sfHumanCheckWrap'),loginLabel=document.getElementById('sfUsernameWrap'),loginInput=document.getElementById('sfAuthEmail');if(title)title.textContent=reg?'Create your STEADFAST account.':'Sign in to your STEADFAST account.';if(intro)intro.textContent=reg?'Create your customer account. We will send a 6-digit verification code to your Gmail/email before your account can be activated.':'Sign in with your username or email and password. Use either one as your credential.';if(submit)submit.textContent=reg?'Create account →':'Sign in →';const setVisible=(el,show,display='')=>{if(!el)return;el.hidden=!show;el.style.display=show?display:'none';el.setAttribute('aria-hidden',show?'false':'true');};setVisible(confirm,reg,'');setVisible(names,reg,'grid');setVisible(username,reg,'');setVisible(registerEmail,reg,'');setVisible(human,reg,'');setVisible(loginLabel,!reg,'');if(reg){setTimeout(()=>renderCustomerRecaptcha().catch(err=>authStatus(err.message,true)),50)}else{resetCustomerRecaptcha();}if(loginInput){loginInput.required=!reg;loginInput.disabled=reg;}document.getElementById('sfAuthUsername')?.toggleAttribute('required',reg);document.getElementById('sfAuthRegisterEmail')?.toggleAttribute('required',reg);document.getElementById('sfAuthFirstName')?.toggleAttribute('required',reg);document.getElementById('sfAuthLastName')?.toggleAttribute('required',reg);if(pw)pw.autocomplete=reg?'new-password':'current-password';const st=document.getElementById('sfAuthStatus');if(st)st.hidden=true}function openCustomerAuth(mode='login'){const modal=document.getElementById('sfCustomerAuthModal');if(!modal)return;setAuthMode(mode);modal.hidden=false;document.body.classList.add('modal-open');setTimeout(()=>document.getElementById(authMode==='register'?'sfAuthFirstName':'sfAuthEmail')?.focus(),50)}
+async function resendCurrentVerificationEmail(){const user=auth.currentUser;const btn=document.getElementById('sfResendVerification');const status=document.getElementById('sfVerificationStatus');if(!user){if(status){status.textContent='Please sign in again so we can resend the verification email.';status.hidden=false;status.classList.add('error')}return}if(user.emailVerified){closeEmailVerificationModal();authStatus('Your email is already verified. You can now sign in and purchase.');return}if(btn){btn.disabled=true;btn.textContent='Sending…'}if(status){status.hidden=true;status.textContent='';status.classList.remove('error')}try{const result=await sendCustomerVerificationEmail({});if(result?.data?.sent||result?.data?.ok){if(status){status.innerHTML=`Verification email sent to <strong>${esc(user.email||'your email')}</strong>. Please check your Inbox, Spam, or Promotions folder.`;status.hidden=false;status.classList.remove('error')}}else{throw new Error('The verification email was not confirmed by STEADFAST.')}}catch(err){console.error('Resend verification email failed:',err);if(status){status.textContent=`We could not send the verification email. ${String(err?.message||'Please try again in a moment.')}`;status.hidden=false;status.classList.add('error')}}finally{if(btn){btn.disabled=false;btn.textContent='Resend Verification Email'}}}
+function setAuthMode(mode){authMode=mode==='register'?'register':'login';const reg=authMode==='register';document.querySelectorAll('[data-auth-mode]').forEach(b=>b.classList.toggle('active',b.dataset.authMode===authMode));const title=document.getElementById('sfAuthTitle'),intro=document.getElementById('sfAuthIntro'),submit=document.getElementById('sfAuthSubmit'),confirm=document.getElementById('sfAuthConfirmWrap'),pw=document.getElementById('sfAuthPassword'),names=document.getElementById('sfRegisterNames'),username=document.getElementById('sfRegisterUsernameWrap'),registerEmail=document.getElementById('sfRegisterEmailWrap'),human=document.getElementById('sfHumanCheckWrap'),loginLabel=document.getElementById('sfUsernameWrap'),loginInput=document.getElementById('sfAuthEmail');if(title)title.textContent=reg?'Create your STEADFAST account.':'Sign in to your STEADFAST account.';if(intro)intro.textContent=reg?'Create your customer account. We will send a verification link to your Gmail/email before your account can be activated.':'Sign in with your username or email and password. Use either one as your credential.';if(submit)submit.textContent=reg?'Create account →':'Sign in →';const setVisible=(el,show,display='')=>{if(!el)return;el.hidden=!show;el.style.display=show?display:'none';el.setAttribute('aria-hidden',show?'false':'true');};setVisible(confirm,reg,'');setVisible(names,reg,'grid');setVisible(username,reg,'');setVisible(registerEmail,reg,'');setVisible(human,reg,'');setVisible(loginLabel,!reg,'');if(reg){setTimeout(()=>renderCustomerRecaptcha().catch(err=>authStatus(err.message,true)),50)}else{resetCustomerRecaptcha();}if(loginInput){loginInput.required=!reg;loginInput.disabled=reg;}document.getElementById('sfAuthUsername')?.toggleAttribute('required',reg);document.getElementById('sfAuthRegisterEmail')?.toggleAttribute('required',reg);document.getElementById('sfAuthFirstName')?.toggleAttribute('required',reg);document.getElementById('sfAuthLastName')?.toggleAttribute('required',reg);if(pw)pw.autocomplete=reg?'new-password':'current-password';const st=document.getElementById('sfAuthStatus');if(st)st.hidden=true}function openCustomerAuth(mode='login'){const modal=document.getElementById('sfCustomerAuthModal');if(!modal)return;setAuthMode(mode);modal.hidden=false;document.body.classList.add('modal-open');setTimeout(()=>document.getElementById(authMode==='register'?'sfAuthFirstName':'sfAuthEmail')?.focus(),50)}
 function closeCustomerAuth(){const modal=document.getElementById('sfCustomerAuthModal');if(modal)modal.hidden=true;document.body.classList.remove('modal-open')}
 function updateStoreAccount(user){const title=document.getElementById('storeAccountTitle'),detail=document.getElementById('storeAccountDetail'),actions=document.getElementById('storeAccountActions');if(!title||!detail||!actions)return;if(user){title.textContent=`Signed in as ${user.email||'customer'}`;detail.textContent='Your account is ready for purchasing and verified buyer reviews.';actions.innerHTML='<button class="btn primary" type="button" data-buy-account>Browse products →</button><button class="btn ghost" type="button" data-signout>Sign out</button>'}else{title.textContent='Sign in to purchase';detail.textContent='You can browse the Store as a guest. An account is required only when you purchase.';actions.innerHTML='<button class="btn primary" type="button" data-open-auth="login">Sign in</button><button class="btn ghost" type="button" data-open-auth="register">Create account</button><button class="btn ghost" type="button" data-guest-store>Visit as guest</button>'}}
 document.addEventListener('click',e=>{const authBtn=e.target.closest('[data-open-auth]');if(authBtn){e.preventDefault();openCustomerAuth(authBtn.dataset.openAuth);return}const modeBtn=e.target.closest('[data-auth-mode]');if(modeBtn){e.preventDefault();setAuthMode(modeBtn.dataset.authMode);return}const toggle=e.target.closest('[data-toggle-password]');if(toggle){const input=document.getElementById(toggle.dataset.togglePassword);if(input){const showing=input.type==='text';input.type=showing?'password':'text';toggle.textContent=showing?'Show':'Hide';toggle.setAttribute('aria-label',showing?'Show password':'Hide password');}}if(e.target.closest('[data-close-auth]'))closeCustomerAuth();if(e.target.closest('[data-close-success]'))closeCustomerLoginSuccess();if(e.target.closest('[data-guest-store]'))closeCustomerAuth();if(e.target.closest('[data-buy-account]'))document.getElementById('steadfastStoreGrid')?.scrollIntoView({behavior:'smooth',block:'start'});if(e.target.closest('[data-signout]'))signOut(auth).catch(err=>showSystemError('Could not sign out.',err?.message||'Please try again.'));});
@@ -175,21 +123,18 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
         }
         resetCustomerRecaptcha();
         setAuthBusy(false);
-        if(result.verificationSent){
-          try{
-            await signInWithEmailAndPassword(auth,email,pw);
-            closeCustomerAuth();
-            showEmailVerificationModal(email,'');
-          }catch(autoErr){
-            console.error('Automatic sign-in after registration failed:',autoErr);
-            document.getElementById('sfAuthTitle').textContent='Account created.';
-            document.getElementById('sfAuthIntro').textContent='Your account was created. Sign in with your username or email and password, then enter the 6-digit code from your email.';
-            showVerificationSent(email);
-          }
-        }else{
-          document.getElementById('sfAuthTitle').textContent='Account created.';
-          document.getElementById('sfAuthIntro').textContent='Your account was created and saved, but the verification code could not be sent yet. Sign in later and use Resend Verification Code.';
-          showVerificationSent(email);
+        document.getElementById('sfAuthTitle').textContent='Verify your email first.';
+        document.getElementById('sfAuthIntro').textContent=result.verificationSent
+          ? 'Your account is created and saved. We sent a STEADFAST verification email to your Gmail/email. Open it, click VERIFY MY EMAIL, then return here to sign in.'
+          : 'Your account is created and saved, but the verification email could not be sent yet. Please try again later or use the resend option after signing in.';
+        document.getElementById('sfAuthSubmit').textContent='Sign in →';
+        const st=document.getElementById('sfAuthStatus');
+        if(st){
+          st.innerHTML=result.verificationSent
+            ? `<strong>Account created successfully.</strong><br><br>1. Open Gmail/email and find the <strong>STEADFAST</strong> verification email.<br>2. Click <strong>VERIFY MY EMAIL</strong>.<br>3. Return to STEADFAST and sign in with your username or email.<br><br><button type="button" class="btn ghost full" id="sfOpenGmail">Open Gmail →</button>`
+            : `<strong>Account created successfully.</strong><br><br>The account and username were saved, but the verification email could not be sent yet.<br><small>Please use Sign in later and resend the verification email.</small>`;
+          st.hidden=false;st.classList.remove('error');
+          document.getElementById('sfOpenGmail')?.addEventListener('click',()=>window.location.href='https://mail.google.com/mail/u/0/#inbox');
         }
         return;
       }catch(regErr){
@@ -218,11 +163,18 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
     await reload(cred.user);
     if(!cred.user.emailVerified){
       let sent=true;
-      let sendMessage='';
-      try{const resendResult=await sendCustomerVerificationEmail({});sent=Boolean(resendResult?.data?.sent||resendResult?.data?.ok);}catch(sendErr){sent=false;sendMessage=String(sendErr?.message||'We could not send the verification code right now.');console.error('Verification code after sign-in failed:',sendErr)}
+      try{const resendResult=await sendCustomerVerificationEmail({});sent=Boolean(resendResult?.data?.sent||resendResult?.data?.ok);}catch(sendErr){sent=false;console.error('Verification email after sign-in failed:',sendErr)}
       setAuthBusy(false);
       authStatus('');
-      showEmailVerificationModal(email,sent?'A fresh 6-digit verification code was sent to your email.':sendMessage);
+      showEmailVerificationModal(email);
+      const status=document.getElementById('sfVerificationStatus');
+      if(status){
+        status.innerHTML=sent
+          ? `A fresh verification email was sent to <strong>${esc(email)}</strong>. Please check your Inbox, Spam, or Promotions folder.`
+          : 'We could not send the verification email right now. Use “Resend Verification Email” to try again.';
+        status.hidden=false;
+        status.classList.toggle('error',!sent);
+      }
       return;
     }
     authStatus('Sign in successful.');
@@ -267,8 +219,6 @@ loadStore();
 onAuthStateChanged(auth,async u=>{if(u){await reload(u).catch(()=>{});if(!u.emailVerified){updateStoreAccount(null);return;}}updateStoreAccount(u);});
 
 document.getElementById('sfResendVerification')?.addEventListener('click',resendCurrentVerificationEmail);
-document.getElementById('sfVerifyCode')?.addEventListener('click',verifyEnteredCustomerCode);
-document.getElementById('sfVerificationCode')?.addEventListener('input',e=>{e.target.value=e.target.value.replace(/\D/g,'').slice(0,6);if(e.target.value.length===6)verifyEnteredCustomerCode();});
 document.getElementById('sfVerificationGmail')?.addEventListener('click',()=>window.location.href='https://mail.google.com/mail/u/0/#inbox');
 document.querySelectorAll('[data-close-verification]').forEach(el=>el.addEventListener('click',closeEmailVerificationModal));
 const params=new URLSearchParams(location.search);if(params.get('auth')==='login')setTimeout(()=>openCustomerAuth('login'),150);if(params.get('verified')==='1')setTimeout(()=>{openCustomerAuth('login');authStatus('Email verification completed. You can now sign in with your email and password.');},200);

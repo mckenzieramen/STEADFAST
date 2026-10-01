@@ -1,6 +1,5 @@
 const { onCall, onRequest, HttpsError } = require('firebase-functions/v2/https');
 const { setGlobalOptions } = require('firebase-functions/v2/options');
-const crypto = require('crypto');
 const { defineSecret } = require('firebase-functions/params');
 const admin = require('firebase-admin');
 
@@ -8,48 +7,49 @@ admin.initializeApp();
 setGlobalOptions({ region: 'asia-southeast1', maxInstances: 10 });
 
 const BRIDGE_URL = 'https://script.google.com/macros/s/AKfycbzit8ibUWLvji0-hM_PEAe9hLdahzRMp6FXTkTkK3LWUHOmv0I_0iddRCP55ypgmFQEGw/exec';
+const CONTINUE_URL = 'https://steadfast-cliffjandee.pages.dev/store.html?verified=1';
 const recaptchaSecret = defineSecret('RECAPTCHA_SECRET_KEY');
 
-function makeVerificationCode_() {
-  return String(crypto.randomInt(0, 1000000)).padStart(6, '0');
-}
-
-function hashVerificationCode_(uid, code) {
-  return crypto.createHash('sha256').update(`${uid}:${code}`).digest('hex');
-}
-
-async function sendVerificationCode_(uid, email, firstName, lastName) {
-  const db = admin.firestore();
-  const registrationRef = db.doc(`customerRegistrations/${uid}`);
-  const snap = await registrationRef.get();
-  const existing = snap.exists ? snap.data() : {};
-  const nowMs = Date.now();
-  const sentAt = existing.verificationCodeSentAt;
-  if (sentAt && typeof sentAt.toMillis === 'function' && nowMs - sentAt.toMillis() < 60000) {
-    throw new HttpsError('resource-exhausted', 'A verification code was sent recently. Please wait about a minute before requesting another code.');
+exports.sendCustomerVerificationEmail = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError('unauthenticated', 'You must be signed in to request a verification email.');
   }
 
-  const code = makeVerificationCode_();
-  const codeHash = hashVerificationCode_(uid, code);
-  const expiresAt = admin.firestore.Timestamp.fromMillis(nowMs + 10 * 60 * 1000);
+  if (!BRIDGE_URL) {
+    throw new HttpsError('failed-precondition', 'STEADFAST Gmail Bridge URL is not configured.');
+  }
 
-  await registrationRef.set({
-    verificationCodeHash: codeHash,
-    verificationCodeExpiresAt: expiresAt,
-    verificationCodeSentAt: admin.firestore.FieldValue.serverTimestamp(),
-    verificationCodeAttempts: 0,
-    verificationEmailSent: false,
-    verificationEmailError: '',
-    status: 'pending_verification',
-    updatedAt: admin.firestore.FieldValue.serverTimestamp()
-  }, { merge: true });
+  const email = String(request.auth.token.email || '').trim().toLowerCase();
+  const uid = String(request.auth.uid || '').trim();
+  if (!email || !uid) {
+    throw new HttpsError('invalid-argument', 'Customer account information is incomplete.');
+  }
+
+  const profileSnap = await admin.firestore().doc(`customerProfiles/${uid}`).get();
+  const profile = profileSnap.exists ? profileSnap.data() : {};
+  const firstName = String(request.data?.firstName || profile.firstName || '').trim();
+  const lastName = String(request.data?.lastName || profile.lastName || '').trim();
+
+  const user = await admin.auth().getUser(uid);
+  if (user.email !== email) {
+    throw new HttpsError('permission-denied', 'The signed-in account does not match the customer email.');
+  }
+
+  if (user.emailVerified) {
+    return { ok: true, alreadyVerified: true };
+  }
+
+  const verificationUrl = await admin.auth().generateEmailVerificationLink(email, {
+    url: CONTINUE_URL,
+    handleCodeInApp: false
+  });
 
   const body = new URLSearchParams({
-    action: 'sendVerificationCode',
+    action: 'sendVerificationEmail',
     customerEmail: email,
     firstName,
     lastName,
-    verificationCode: code
+    verificationUrl
   }).toString();
 
   const response = await fetch(BRIDGE_URL, {
@@ -57,92 +57,23 @@ async function sendVerificationCode_(uid, email, firstName, lastName) {
     headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
     body
   });
+
   const raw = await response.text();
   let bridgeResult;
-  try { bridgeResult = JSON.parse(raw); }
-  catch (_) { bridgeResult = { ok: false, error: raw || 'The Gmail Bridge returned an invalid response.' }; }
+  try {
+    bridgeResult = JSON.parse(raw);
+  } catch (_) {
+    bridgeResult = { ok: false, error: raw || 'The Gmail Bridge returned an invalid response.' };
+  }
 
   if (!response.ok || !bridgeResult.ok) {
-    await registrationRef.set({
-      verificationEmailSent: false,
-      verificationEmailError: String(bridgeResult.error || 'The STEADFAST verification email could not be sent.'),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
+    console.error('Gmail Bridge verification email failed:', response.status, bridgeResult);
     throw new HttpsError('internal', 'The STEADFAST verification email could not be sent.');
   }
 
-  await registrationRef.set({
-    verificationEmailSent: true,
-    verificationEmailError: '',
-    updatedAt: admin.firestore.FieldValue.serverTimestamp()
-  }, { merge: true });
-
   return { ok: true, sent: true };
-}
-
-exports.sendCustomerVerificationEmail = onCall(async (request) => {
-  if (!request.auth) throw new HttpsError('unauthenticated', 'You must be signed in to request a verification code.');
-  if (!BRIDGE_URL) throw new HttpsError('failed-precondition', 'STEADFAST Gmail Bridge URL is not configured.');
-
-  const uid = String(request.auth.uid || '').trim();
-  const email = String(request.auth.token.email || '').trim().toLowerCase();
-  if (!email || !uid) throw new HttpsError('invalid-argument', 'Customer account information is incomplete.');
-
-  const user = await admin.auth().getUser(uid);
-  if (user.email !== email) throw new HttpsError('permission-denied', 'The signed-in account does not match the customer email.');
-  if (user.emailVerified) return { ok: true, alreadyVerified: true };
-
-  const profileSnap = await admin.firestore().doc(`customerProfiles/${uid}`).get();
-  const profile = profileSnap.exists ? profileSnap.data() : {};
-  const firstName = String(request.data?.firstName || profile.firstName || user.displayName?.split(' ')[0] || 'there').trim();
-  const lastName = String(request.data?.lastName || profile.lastName || '').trim();
-  return await sendVerificationCode_(uid, email, firstName, lastName);
 });
 
-exports.verifyCustomerEmailCode = onCall(async (request) => {
-  if (!request.auth) throw new HttpsError('unauthenticated', 'Please sign in before entering your verification code.');
-  const uid = String(request.auth.uid || '').trim();
-  const code = String(request.data?.code || '').trim();
-  if (!/^\d{6}$/.test(code)) throw new HttpsError('invalid-argument', 'Enter the 6-digit verification code from your email.');
-
-  const user = await admin.auth().getUser(uid);
-  if (user.emailVerified) return { ok: true, verified: true, alreadyVerified: true };
-
-  const db = admin.firestore();
-  const registrationRef = db.doc(`customerRegistrations/${uid}`);
-  const snap = await registrationRef.get();
-  if (!snap.exists) throw new HttpsError('failed-precondition', 'Your verification request could not be found. Please request a new code.');
-  const data = snap.data() || {};
-  const expiresAt = data.verificationCodeExpiresAt;
-  const attempts = Number(data.verificationCodeAttempts || 0);
-  if (attempts >= 5) throw new HttpsError('resource-exhausted', 'Too many incorrect verification attempts. Request a new code and try again.');
-  if (!expiresAt || typeof expiresAt.toMillis !== 'function' || expiresAt.toMillis() < Date.now()) {
-    throw new HttpsError('deadline-exceeded', 'This verification code has expired. Request a new code.');
-  }
-
-  const expectedHash = String(data.verificationCodeHash || '');
-  const actualHash = hashVerificationCode_(uid, code);
-  if (!expectedHash || actualHash !== expectedHash) {
-    await registrationRef.set({
-      verificationCodeAttempts: admin.firestore.FieldValue.increment(1),
-      updatedAt: admin.firestore.FieldValue.serverTimestamp()
-    }, { merge: true });
-    throw new HttpsError('invalid-argument', 'That verification code is incorrect. Please check the email and try again.');
-  }
-
-  await admin.auth().updateUser(uid, { emailVerified: true });
-  await registrationRef.set({
-    status: 'verified',
-    verificationEmailSent: true,
-    verificationCodeHash: admin.firestore.FieldValue.delete(),
-    verificationCodeExpiresAt: admin.firestore.FieldValue.delete(),
-    verificationCodeSentAt: admin.firestore.FieldValue.delete(),
-    verificationCodeAttempts: admin.firestore.FieldValue.delete(),
-    updatedAt: admin.firestore.FieldValue.serverTimestamp()
-  }, { merge: true });
-  await db.doc(`customerProfiles/${uid}`).set({ emailVerified: true, verifiedAt: admin.firestore.FieldValue.serverTimestamp(), updatedAt: admin.firestore.FieldValue.serverTimestamp() }, { merge: true });
-  return { ok: true, verified: true };
-});
 
 
 exports.saveCustomerProfile = onCall(async (request) => {
@@ -371,11 +302,33 @@ exports.registerCustomer = onRequest({ secrets: [recaptchaSecret] }, async (req,
   let verificationSent = false;
   let verificationError = '';
   try {
-    const result = await sendVerificationCode_(userRecord.uid, email, firstName, lastName);
-    verificationSent = Boolean(result?.sent || result?.ok);
+    if (!BRIDGE_URL) throw new Error('STEADFAST Gmail Bridge URL is not configured.');
+    const verificationUrl = await admin.auth().generateEmailVerificationLink(email, {
+      url: CONTINUE_URL,
+      handleCodeInApp: false
+    });
+    const body = new URLSearchParams({
+      action: 'sendVerificationEmail',
+      customerEmail: email,
+      firstName,
+      lastName,
+      verificationUrl
+    }).toString();
+    const response = await fetch(BRIDGE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body
+    });
+    const raw = await response.text();
+    let bridgeResult;
+    try { bridgeResult = JSON.parse(raw); } catch (_) { bridgeResult = { ok: false, error: raw }; }
+    if (!response.ok || !bridgeResult.ok) {
+      throw new Error(bridgeResult.error || 'The verification email could not be sent.');
+    }
+    verificationSent = true;
   } catch (error) {
     verificationError = String(error?.message || 'The verification email could not be sent.');
-    console.error('registerCustomer verification code email failed:', error);
+    console.error('registerCustomer verification email failed:', error);
   }
 
   try {

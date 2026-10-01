@@ -1,6 +1,6 @@
 # STEADFAST Custom Verification Email Setup
 
-The Store registration flow uses the Firebase `registerCustomer` HTTPS function. That function creates the Firebase account/profile, generates a secure 6-digit verification code, stores only its hash, and sends the code to the STEADFAST Gmail Bridge. The Gmail Bridge sends the branded HTML email.
+The Store registration flow uses the Firebase `registerCustomer` HTTPS function. That function creates the Firebase account/profile, generates the real Firebase verification link, and sends it to the STEADFAST Gmail Bridge. The Gmail Bridge sends the branded HTML email.
 
 ## 1. Google Apps Script
 
@@ -39,4 +39,4 @@ Deploy the updated `store.js` and the rest of the project to GitHub/Cloudflare P
 
 ## Expected flow
 
-The Store registration flow uses the Firebase `registerCustomer` HTTPS function. That function creates the Firebase account/profile, generates a secure 6-digit verification code, stores only its hash, and sends the code to the STEADFAST Gmail Bridge. The Gmail Bridge sends the branded HTML email.
+Create Account -> reCAPTCHA -> Firebase `registerCustomer` -> Firebase creates account/profile -> Firebase generates verification link -> Gmail Bridge -> branded STEADFAST HTML email -> VERIFY MY EMAIL -> Firebase verifies -> return to STEADFAST -> sign in.

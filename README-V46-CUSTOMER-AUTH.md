@@ -15,7 +15,7 @@
 - Confirm Password
 - “I'm not a robot” checkbox
 - Verification email is sent after Firebase account creation.
-- Customer must enter the 6-digit verification code before sign-in/purchase/review.
+- Customer must click the verification link before sign-in/purchase/review.
 
 ## Admin
 Existing admin identity is preserved:

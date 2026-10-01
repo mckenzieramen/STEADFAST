@@ -39,7 +39,7 @@
     <div class="sf-auth-modal-copy">
       <span class="sf-work-tag">STEADFAST CUSTOMER</span>
       <h2 id="sfAuthTitle">Sign in to purchase.</h2>
-      <p id="sfAuthIntro">Create an account with your email and password. We will send a 6-digit verification code to your email before you can purchase or review.</p>
+      <p id="sfAuthIntro">Create an account with your email and password. We will send an email verification link before you can purchase or review.</p>
       <div class="sf-auth-tabs" role="tablist">
         <button class="active" type="button" data-auth-mode="login">Sign in</button>
         <button type="button" data-auth-mode="register">Create account</button>
@@ -66,16 +66,12 @@
     <div class="sf-auth-modal-copy">
       <div class="sf-success-icon" aria-hidden="true">✉</div>
       <span class="sf-work-tag">EMAIL VERIFICATION REQUIRED</span>
-      <h2 id="sfVerificationTitle">Enter your verification code.</h2>
-      <p id="sfVerificationText">Enter the 6-digit code we sent to your email.</p>
-      <label style="display:block;text-align:left;margin:20px 0 12px;font-weight:700;">6-digit verification code
-        <input id="sfVerificationCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" pattern="\d{6}" placeholder="000000" aria-label="6-digit verification code" style="width:100%;box-sizing:border-box;margin-top:8px;padding:15px 16px;border:1px solid #ddd6e9;border-radius:12px;font-size:26px;letter-spacing:8px;text-align:center;font-weight:800;">
-      </label>
+      <h2 id="sfVerificationTitle">Verify your email first.</h2>
+      <p id="sfVerificationText">Please check your email and click the verification link before you can purchase.</p>
       <div class="sf-auth-status" id="sfVerificationStatus" hidden aria-live="polite"></div>
-      <button class="btn primary full" type="button" id="sfVerifyCode">Verify Email</button>
-      <button class="btn ghost full" type="button" id="sfResendVerification">Resend Verification Code</button>
+      <button class="btn primary full" type="button" id="sfResendVerification">Resend Verification Email</button>
       <button class="btn ghost full" type="button" id="sfVerificationGmail">Open Gmail →</button>
-      <button class="btn ghost full" type="button" data-close-verification>I'll verify it later</button>
+      <button class="btn ghost full" type="button" data-close-verification>OK, I'll verify it</button>
     </div>
   </div>
 </div>
@@ -93,5 +89,5 @@
   </div>
 </div>
 <div class="sf-modal" id="sfPreviewModal" hidden><div class="sf-modal-backdrop" data-close-preview></div><div class="sf-modal-card"><button class="sf-modal-close" type="button" data-close-preview aria-label="Close">×</button><div id="sfPreviewBody"></div></div></div>
-<script>window.STEADFAST_RECAPTCHA_SITE_KEY="6LdAQNctAAAAABIWeOxURloPVvhrvtGgTlGUsKpj";</script><script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script><script src="script.js"></script><script type="module" src="store.js?v=20261001-code-auth-v1"></script>
+<script>window.STEADFAST_RECAPTCHA_SITE_KEY="6LdAQNctAAAAABIWeOxURloPVvhrvtGgTlGUsKpj";</script><script src="https://www.google.com/recaptcha/api.js?render=explicit" async defer></script><script src="script.js"></script><script type="module" src="store.js?v=20261001-free-auth-v2"></script>
 </body></html>

@@ -33,7 +33,7 @@ function doPost(e) {
 
     if (action === 'sendQuoteEmail') return sendQuoteEmail_(p);
     if (action === 'sendEmail') return sendAdminEmail_(p);
-    if (action === 'sendVerificationEmail' || action === 'sendVerificationCode') return sendVerificationEmail_(p);
+    if (action === 'sendVerificationEmail') return sendVerificationEmail_(p);
     if (action === 'paymentSubmitted') return sendPaymentSubmittedEmail_(p);
     if (action === 'paymentVerified') return sendPaymentVerifiedEmail_(p);
     if (action === 'paymentFailed') return sendPaymentFailedEmail_(p);
@@ -177,81 +177,117 @@ function sendVerificationEmail_(p) {
   const customerEmail = String(p.customerEmail || '').trim();
   const firstName = String(p.firstName || 'there').trim();
   const lastName = String(p.lastName || '').trim();
-  const verificationCode = String(p.verificationCode || '').trim();
+  const verificationUrl = String(p.verificationUrl || '').trim();
 
   if (!/^\S+@\S+\.\S+$/.test(customerEmail)) throw new Error('Invalid customer email.');
-  if (!/^\d{6}$/.test(verificationCode)) throw new Error('Invalid verification code.');
+  if (!/^https?:\/\//i.test(verificationUrl)) throw new Error('Invalid verification URL.');
 
   const displayName = [firstName, lastName].filter(Boolean).join(' ') || 'there';
-  const subject = 'Your STEADFAST verification code';
+  const subject = 'Verify your STEADFAST account';
   const text = [
     `Hello ${displayName},`,
     '',
     'Thank you for creating your STEADFAST customer account.',
     '',
-    'Use the verification code below to verify your email address:',
+    'Please verify your email address to activate your account.',
     '',
-    verificationCode,
+    `Verify your email: ${verificationUrl}`,
     '',
-    'This code expires in 10 minutes and can only be used once.',
+    'After verification, return to STEADFAST and sign in using your username or email and password.',
     '',
-    'If you did not create this account, you can safely ignore this email.',
+    "If you did not create this account, you can safely ignore this email.",
     '',
     'Thank you,',
     'Cliff Jandee Medrano',
     BRAND_NAME
   ].join('\n');
 
-  const html = buildCustomerVerificationHtml_(firstName, verificationCode);
+  const html = buildCustomerVerificationHtml_(firstName, verificationUrl);
+
   GmailApp.sendEmail(customerEmail, subject, text, {
     name: BRAND_NAME,
     replyTo: ADMIN_EMAIL,
     htmlBody: html
   });
 
-  return json_({ ok: true, action: 'sendVerificationCode', customerEmail });
+  return json_({ ok: true, action: 'sendVerificationEmail', customerEmail });
 }
 
-function buildCustomerVerificationHtml_(firstName, verificationCode) {
+function buildCustomerVerificationHtml_(firstName, verificationUrl) {
   const esc = htmlEscape_;
   const safeName = esc(firstName || 'there');
-  const safeCode = esc(verificationCode);
+  const safeUrl = esc(verificationUrl);
   const logoUrl = 'https://steadfast-cliffjandee.pages.dev/assets/steadfast-mark.png';
 
   return `<!doctype html>
 <html>
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Your STEADFAST verification code</title></head>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Verify your STEADFAST account</title>
+</head>
 <body style="margin:0;background:#f4f1fa;font-family:Arial,Helvetica,sans-serif;color:#17151d;line-height:1.6;">
   <div style="max-width:680px;margin:0 auto;padding:30px 14px;">
-    <div style="background:#ffffff;border:1px solid #e7e1f2;border-radius:22px;overflow:hidden;">
-      <div style="background:#0e0c13;padding:28px 30px;">
-        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0"><tr>
-          <td style="vertical-align:middle;"><img src="${logoUrl}" width="52" height="52" alt="STEADFAST" style="display:block;border:0;border-radius:14px;"></td>
-          <td style="padding-left:14px;vertical-align:middle;"><div style="font-size:18px;font-weight:800;letter-spacing:1.4px;color:#ffffff;">STEADFAST</div><div style="font-size:10px;letter-spacing:1.5px;color:#bca7ff;margin-top:3px;">BY CLIFF JANDEE MEDRANO</div></td>
-        </tr></table>
+    <div style="background:#ffffff;border:1px solid #e7e1f2;border-radius:22px;overflow:hidden;box-shadow:0 12px 40px rgba(32,20,60,.08);">
+      <div style="background:#0e0c13;padding:28px 30px;text-align:left;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+          <tr>
+            <td style="vertical-align:middle;">
+              <img src="${logoUrl}" width="52" height="52" alt="STEADFAST" style="display:block;border:0;border-radius:14px;">
+            </td>
+            <td style="padding-left:14px;vertical-align:middle;">
+              <div style="font-size:18px;font-weight:800;letter-spacing:1.4px;color:#ffffff;">STEADFAST</div>
+              <div style="font-size:10px;letter-spacing:1.5px;color:#bca7ff;margin-top:3px;">BY CLIFF JANDEE MEDRANO</div>
+            </td>
+          </tr>
+        </table>
       </div>
+
       <div style="padding:38px 32px 34px;">
         <div style="font-size:11px;letter-spacing:2px;font-weight:800;color:#7a43ff;margin-bottom:10px;">STEADFAST CUSTOMER</div>
         <h1 style="margin:0;font-size:32px;line-height:1.12;color:#15131b;">Verify your email.</h1>
         <p style="font-size:16px;color:#5e586b;margin:20px 0 0;">Hello ${safeName},</p>
-        <p style="font-size:16px;color:#5e586b;margin:10px 0 0;">Thank you for creating your STEADFAST customer account. Enter the verification code below to confirm that this email address belongs to you.</p>
+        <p style="font-size:16px;color:#5e586b;margin:10px 0 0;">
+          Thank you for creating your STEADFAST customer account. Please confirm that this email address belongs to you to activate your account.
+        </p>
+
         <div style="text-align:center;margin:30px 0;">
-          <div style="display:inline-block;background:#f8f6fc;border:2px solid #8b3dff;border-radius:16px;padding:18px 30px;min-width:210px;">
-            <div style="font-size:11px;letter-spacing:2px;font-weight:800;color:#7a43ff;margin-bottom:8px;">YOUR VERIFICATION CODE</div>
-            <div style="font-size:38px;line-height:1.1;font-weight:900;letter-spacing:8px;color:#17131f;">${safeCode}</div>
-          </div>
+          <a href="${safeUrl}" style="display:inline-block;background:#8b3dff;color:#ffffff;text-decoration:none;font-size:15px;font-weight:800;padding:15px 25px;border-radius:12px;">
+            VERIFY MY EMAIL →
+          </a>
         </div>
+
         <div style="background:#f8f6fc;border:1px solid #e9e3f5;border-radius:14px;padding:18px 20px;margin-top:10px;">
-          <div style="font-size:12px;font-weight:800;color:#6e667d;letter-spacing:.5px;">CODE EXPIRATION</div>
-          <p style="font-size:14px;color:#5e586b;margin:8px 0 0;">This code expires in <strong>10 minutes</strong> and can only be used once.</p>
+          <div style="font-size:12px;font-weight:800;color:#6e667d;letter-spacing:.5px;">AFTER VERIFICATION</div>
+          <p style="font-size:14px;color:#5e586b;margin:8px 0 0;">
+            Return to STEADFAST and sign in using your <strong>username or email</strong> and password. Your verified account can then be used for purchases and eligible buyer reviews.
+          </p>
         </div>
-        <p style="font-size:13px;color:#8a8394;margin:24px 0 0;">If you did not create a STEADFAST account, you can safely ignore this email.</p>
-        <p style="font-size:15px;color:#4d4758;margin:28px 0 0;">Thank you,<br><strong>Cliff Jandee Medrano</strong><br>STEADFAST by Cliff Jandee Medrano</p>
+
+        <p style="font-size:13px;color:#7b7486;margin:24px 0 0;">
+          If the button does not work, copy and paste this link into your browser:<br>
+          <a href="${safeUrl}" style="color:#7040df;word-break:break-all;">${safeUrl}</a>
+        </p>
+
+        <p style="font-size:13px;color:#8a8394;margin:22px 0 0;">
+          If you did not create a STEADFAST account, you can safely ignore this email.
+        </p>
+
+        <p style="font-size:15px;color:#4d4758;margin:28px 0 0;">
+          Thank you,<br>
+          <strong>Cliff Jandee Medrano</strong><br>
+          STEADFAST by Cliff Jandee Medrano
+        </p>
       </div>
-      <div style="border-top:1px solid #ece7f3;padding:20px 30px;background:#fbfaff;text-align:center;"><div style="font-size:11px;color:#8a8394;">STEADFAST • Digital Experiences &amp; Works</div><div style="font-size:10px;color:#aaa2b4;margin-top:5px;">© 2026 STEADFAST</div></div>
+
+      <div style="border-top:1px solid #ece7f3;padding:20px 30px;background:#fbfaff;text-align:center;">
+        <div style="font-size:11px;color:#8a8394;">STEADFAST • Digital Experiences &amp; Works</div>
+        <div style="font-size:10px;color:#aaa2b4;margin-top:5px;">© 2026 STEADFAST</div>
+      </div>
     </div>
   </div>
-</body></html>`;
+</body>
+</html>`;
 }
 
 function sendPaymentSubmittedEmail_(p) {

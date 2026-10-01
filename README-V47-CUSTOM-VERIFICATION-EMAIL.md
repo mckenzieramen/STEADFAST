@@ -12,7 +12,7 @@ The flow is:
 4. The Firebase Admin SDK generates the real verification action link securely on the server.
 5. The Cloud Function sends that link to the existing STEADFAST Gmail Bridge.
 6. The Gmail Bridge sends the branded HTML email from the authorized STEADFAST Gmail account.
-7. Customer clicks **6-digit verification code** in Gmail.
+7. Customer clicks **VERIFY MY EMAIL** in Gmail.
 8. Firebase verifies the address and returns the customer to the STEADFAST Store.
 9. Customer can sign in with username or email + password.
 
@@ -55,4 +55,4 @@ Make sure:
 
 ### 4. Do NOT call `sendEmailVerification()` from the browser
 
-The V47 browser flow intentionally does not use Firebase's built-in client email sender. The custom HTML email is sent through the STEADFAST Gmail Bridge after the server generates the legitimate Firebase 6-digit verification code.
+The V47 browser flow intentionally does not use Firebase's built-in client email sender. The custom HTML email is sent through the STEADFAST Gmail Bridge after the server generates the legitimate Firebase verification link.
