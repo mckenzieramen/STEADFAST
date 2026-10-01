@@ -1,25 +1,55 @@
 import { initializeApp, getApps } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, reload,  } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
-import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-functions.js";
+import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification, signOut, reload } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-auth.js";
 import { getFirestore, collection, addDoc, setDoc, getDoc, doc, serverTimestamp, onSnapshot, query, where, writeBatch } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-firestore.js";
 const firebaseConfig={apiKey:"AIzaSyD13MXR0ZQSjPJBxQKYPmsMKjl4yzU2hSs",authDomain:"steadfast-1d0e6.firebaseapp.com",projectId:"steadfast-1d0e6",storageBucket:"steadfast-1d0e6.firebasestorage.app",messagingSenderId:"488385339804",appId:"1:488385339804:web:0d2bcf3967a8f95ccfe859"};
-const customerApp=getApps().find(a=>a.name==="steadfastCustomer")||initializeApp(firebaseConfig,"steadfastCustomer"),db=getFirestore(customerApp),auth=getAuth(customerApp),functions=getFunctions(customerApp,"asia-southeast1"),sendCustomVerificationEmail=httpsCallable(functions,"sendCustomerVerificationEmail");
-const REGISTER_CUSTOMER_URL="https://asia-southeast1-steadfast-1d0e6.cloudfunctions.net/registerCustomer";
-async function registerCustomer(payload){
-  const response=await fetch(REGISTER_CUSTOMER_URL,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(payload)});
-  let data={};
-  try{data=await response.json();}catch(_){data={ok:false,code:"internal",message:"The account service returned an invalid response."};}
-  if(!response.ok||!data.ok){
-    const err=new Error(data.message||"The account could not be created.");
-    err.code=`functions/${data.code||"internal"}`;
-    throw err;
-  }
-  return {data};
-}
+const customerApp=getApps().find(a=>a.name==="steadfastCustomer")||initializeApp(firebaseConfig,"steadfastCustomer"),db=getFirestore(customerApp),auth=getAuth(customerApp);
 let recaptchaWidgetId=null;
-function renderCustomerRecaptcha(){return new Promise((resolve,reject)=>{const el=document.getElementById("sfRecaptcha");if(!el)return reject(new Error("Human verification is unavailable."));const key=window.STEADFAST_RECAPTCHA_SITE_KEY||el.dataset.sitekey||"";if(!key||key.startsWith("REPLACE_WITH_"))return reject(new Error("reCAPTCHA is not configured yet. Add the STEADFAST reCAPTCHA v2 site key."));const run=()=>{try{if(window.grecaptcha){if(recaptchaWidgetId!==null){try{window.grecaptcha.reset(recaptchaWidgetId)}catch(_){}} recaptchaWidgetId=window.grecaptcha.render(el,{sitekey:key,callback:()=>{const st=document.getElementById("sfAuthStatus");if(st&&st.classList.contains("error")&&/reCAPTCHA|robot|verification/i.test(st.textContent||""))st.hidden=true;},"expired-callback":()=>{resetCustomerRecaptcha();authStatus("Your reCAPTCHA verification expired. Please check “I’m not a robot” again.",true);},"error-callback":()=>{authStatus("reCAPTCHA could not be verified. Please check “I’m not a robot” again.",true);}});resolve(recaptchaWidgetId);return}reject(new Error("reCAPTCHA is still loading. Please wait a moment and try again."));}catch(e){reject(e)}};if(window.grecaptcha)run();else{let tries=0;const timer=setInterval(()=>{tries++;if(window.grecaptcha){clearInterval(timer);run()}else if(tries>50){clearInterval(timer);reject(new Error("reCAPTCHA could not load."))}},100)}})}
-function getCustomerRecaptchaToken(){if(recaptchaWidgetId===null||!window.grecaptcha)return "";return window.grecaptcha.getResponse(recaptchaWidgetId)||""}
-function resetCustomerRecaptcha(){if(recaptchaWidgetId!==null&&window.grecaptcha)window.grecaptcha.reset(recaptchaWidgetId)}
+let recaptchaRenderPromise=null;
+function renderCustomerRecaptcha(){
+  if(recaptchaWidgetId!==null)return Promise.resolve(recaptchaWidgetId);
+  if(recaptchaRenderPromise)return recaptchaRenderPromise;
+  recaptchaRenderPromise=new Promise((resolve,reject)=>{
+    const el=document.getElementById("sfRecaptcha");
+    if(!el){recaptchaRenderPromise=null;return reject(new Error("Human verification is unavailable."));}
+    const key=window.STEADFAST_RECAPTCHA_SITE_KEY||el.dataset.sitekey||"";
+    if(!key||key.startsWith("REPLACE_WITH_")){recaptchaRenderPromise=null;return reject(new Error("reCAPTCHA is not configured yet."));}
+    const run=()=>{
+      try{
+        if(!window.grecaptcha){throw new Error("reCAPTCHA is still loading. Please wait a moment and try again.");}
+        if(recaptchaWidgetId!==null){resolve(recaptchaWidgetId);return;}
+        recaptchaWidgetId=window.grecaptcha.render(el,{
+          sitekey:key,
+          size:"normal",
+          callback:()=>{
+            const st=document.getElementById("sfAuthStatus");
+            if(st&&st.classList.contains("error")&&/reCAPTCHA|robot|verification/i.test(st.textContent||""))st.hidden=true;
+          },
+          "expired-callback":()=>{
+            resetCustomerRecaptcha();
+            authStatus("Your reCAPTCHA verification expired. Please check “I’m not a robot” again.",true);
+          },
+          "error-callback":()=>{
+            authStatus("reCAPTCHA could not be verified. Please check “I’m not a robot” again.",true);
+          }
+        });
+        resolve(recaptchaWidgetId);
+      }catch(e){recaptchaWidgetId=null;reject(e);}
+      finally{recaptchaRenderPromise=null;}
+    };
+    if(window.grecaptcha)run();
+    else{
+      let tries=0;
+      const timer=setInterval(()=>{
+        tries++;
+        if(window.grecaptcha){clearInterval(timer);run();}
+        else if(tries>80){clearInterval(timer);recaptchaRenderPromise=null;reject(new Error("reCAPTCHA could not load."));}
+      },100);
+    }
+  });
+  return recaptchaRenderPromise;
+}
+function getCustomerRecaptchaToken(){return recaptchaWidgetId!==null&&window.grecaptcha?window.grecaptcha.getResponse(recaptchaWidgetId)||"":""}
+function resetCustomerRecaptcha(){if(recaptchaWidgetId!==null&&window.grecaptcha){try{window.grecaptcha.reset(recaptchaWidgetId)}catch(_){}}}
 const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const money=(v,c="PHP")=>{try{return new Intl.NumberFormat(undefined,{style:"currency",currency:c}).format(Number(v||0))}catch{return `${c} ${Number(v||0).toFixed(2)}`}};
 let products=[];
@@ -43,23 +73,6 @@ function closeCustomerAuth(){const modal=document.getElementById('sfCustomerAuth
 function updateStoreAccount(user){const title=document.getElementById('storeAccountTitle'),detail=document.getElementById('storeAccountDetail'),actions=document.getElementById('storeAccountActions');if(!title||!detail||!actions)return;if(user){title.textContent=`Signed in as ${user.email||'customer'}`;detail.textContent='Your account is ready for purchasing and verified buyer reviews.';actions.innerHTML='<button class="btn primary" type="button" data-buy-account>Browse products →</button><button class="btn ghost" type="button" data-signout>Sign out</button>'}else{title.textContent='Sign in to purchase';detail.textContent='You can browse the Store as a guest. An account is required only when you purchase.';actions.innerHTML='<button class="btn primary" type="button" data-open-auth="login">Sign in</button><button class="btn ghost" type="button" data-open-auth="register">Create account</button><button class="btn ghost" type="button" data-guest-store>Visit as guest</button>'}}
 document.addEventListener('click',e=>{const authBtn=e.target.closest('[data-open-auth]');if(authBtn){e.preventDefault();openCustomerAuth(authBtn.dataset.openAuth);return}const modeBtn=e.target.closest('[data-auth-mode]');if(modeBtn){e.preventDefault();setAuthMode(modeBtn.dataset.authMode);return}const toggle=e.target.closest('[data-toggle-password]');if(toggle){const input=document.getElementById(toggle.dataset.togglePassword);if(input){const showing=input.type==='text';input.type=showing?'password':'text';toggle.textContent=showing?'Show':'Hide';toggle.setAttribute('aria-label',showing?'Show password':'Hide password');}}if(e.target.closest('[data-close-auth]'))closeCustomerAuth();if(e.target.closest('[data-close-success]'))closeCustomerLoginSuccess();if(e.target.closest('[data-guest-store]'))closeCustomerAuth();if(e.target.closest('[data-buy-account]'))document.getElementById('steadfastStoreGrid')?.scrollIntoView({behavior:'smooth',block:'start'});if(e.target.closest('[data-signout]'))signOut(auth).catch(err=>showSystemError('Could not sign out.',err?.message||'Please try again.'));});
 document.addEventListener('keydown',e=>{const modal=document.getElementById('sfCustomerAuthModal');if(e.key==='Escape'&&modal&&!modal.hidden)closeCustomerAuth()});
-async function sendVerification(user, profile={}){
-  const result=await sendCustomVerificationEmail({
-    firstName:String(profile.firstName||''),
-    lastName:String(profile.lastName||''),
-    email:String(user.email||''),
-    uid:String(user.uid||'')
-  });
-  if(!result?.data?.ok) throw new Error(result?.data?.error||'Could not send the STEADFAST verification email.');
-  return result.data;
-}
-async function finishVerificationState(){
-  const user=auth.currentUser;
-  if(!user)return false;
-  await reload(user);
-  if(user.emailVerified)return true;
-  return false;
-}
 document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e=>{
   e.preventDefault();
   const submit=document.getElementById('sfAuthSubmit');
@@ -86,30 +99,62 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
         return;
       }
       const captchaToken=getCustomerRecaptchaToken();
-      if(!captchaToken){authStatus('Please complete the “I’m not a robot” verification.',true);return}
+      if(!captchaToken){authStatus('Please complete the “I’m not a robot” verification. Google may ask you to select images when additional verification is needed.',true);return}
       authStatus('Creating your STEADFAST account…');
       try{
-        const result=await Promise.race([
-          registerCustomer({firstName:first,lastName:last,email,username,password:pw,recaptchaToken:captchaToken}),
+        const cred=await Promise.race([
+          createUserWithEmailAndPassword(auth,email,pw),
           new Promise((_,reject)=>setTimeout(()=>reject(new Error('Account creation timed out. Please try again.')),30000))
         ]);
-        if(!result?.data?.ok)throw new Error(result?.data?.message||'The account could not be created.');
+        const user=cred.user;
+        const usernameRef=doc(db,'customerUsernames',username);
+        const existingUsername=await getDoc(usernameRef);
+        if(existingUsername.exists() && String(existingUsername.data()?.uid||'')!==String(user.uid)){
+          await signOut(auth).catch(()=>{});
+          resetCustomerRecaptcha();
+          throw Object.assign(new Error('That username is already taken. Please choose another username.'),{code:'username/already-taken'});
+        }
+        const profileRef=doc(db,'customerProfiles',user.uid);
+        await Promise.race([
+          (async()=>{
+            await setDoc(profileRef,{uid:user.uid,firstName:first,lastName:last,email,username,createdAt:serverTimestamp(),updatedAt:serverTimestamp()},{merge:true});
+            await setDoc(usernameRef,{uid:user.uid,email,updatedAt:serverTimestamp()},{merge:true});
+          })(),
+          new Promise((_,reject)=>setTimeout(()=>reject(new Error('Customer profile storage timed out. Please try again.')),30000))
+        ]);
+        let verificationSent=true;
+        let verificationError='';
+        try{
+          const actionCodeSettings={url:'https://steadfast-cliffjandee.pages.dev/store.html?verified=1',handleCodeInApp:false};
+          await sendEmailVerification(user,actionCodeSettings);
+        }catch(emailError){
+          verificationSent=false;
+          verificationError=String(emailError?.message||'Firebase could not send the verification email.');
+          console.error('Firebase verification email failed:',emailError);
+        }
+        await signOut(auth).catch(()=>{});
         resetCustomerRecaptcha();
         setAuthBusy(false);
         document.getElementById('sfAuthTitle').textContent='Verify your email first.';
-        const verificationSent = result?.data?.verificationSent !== false;
-        document.getElementById('sfAuthIntro').textContent = verificationSent
-          ? 'Your account is created. We sent a verification link to your Gmail/email. Open Gmail, click VERIFY MY EMAIL, then return here to sign in.'
-          : 'Your account is created and saved. The verification email could not be sent yet. Please contact support or use the resend verification option.';
+        document.getElementById('sfAuthIntro').textContent=verificationSent
+          ? 'Your account is created and saved. We sent a Firebase verification link to your Gmail/email. Open it, click VERIFY MY EMAIL, then return here to sign in.'
+          : 'Your account is created and saved, but the verification email could not be sent yet. Please try again later or use the resend option when available.';
         document.getElementById('sfAuthSubmit').textContent='Sign in →';
-        showVerificationSent(email);
+        const st=document.getElementById('sfAuthStatus');
+        if(st){
+          st.innerHTML=verificationSent
+            ? `<strong>Account created successfully.</strong><br><br>1. Open Gmail/email and find the Firebase verification email.<br>2. Click <strong>VERIFY MY EMAIL</strong>.<br>3. Return to STEADFAST and sign in with your username or email.<br><br><button type="button" class="btn ghost full" id="sfOpenGmail">Open Gmail →</button>`
+            : `<strong>Account created successfully.</strong><br><br>The account and username were saved. The verification email could not be sent yet.<br><small>${esc(verificationError)}</small>`;
+          st.hidden=false;st.classList.remove('error');
+          document.getElementById('sfOpenGmail')?.addEventListener('click',()=>window.location.href='https://mail.google.com/mail/u/0/#inbox');
+        }
         return;
       }catch(regErr){
         console.error('Customer registration failed:',regErr);
         resetCustomerRecaptcha();
         const code=String(regErr?.code||'');
         const raw=String(regErr?.message||'');
-        const msg=code==='functions/failed-precondition'?'STEADFAST reCAPTCHA server configuration is missing. Please deploy the latest Firebase Functions and configure RECAPTCHA_SECRET_KEY.':code==='functions/permission-denied'?(raw||'Google rejected the reCAPTCHA verification. Please check “I’m not a robot” again.'):code==='functions/already-exists'?'That email or username is already registered. Please use Sign in or choose another username.':code==='functions/invalid-argument'?(raw||'Please check the registration details and try again.'):code==='functions/unavailable'?'The account service is temporarily unavailable. Please try again.':raw||'The account could not be created.';
+        const msg=code==='auth/email-already-in-use'?'That email already has a STEADFAST customer account. Please use Sign in.':code==='auth/weak-password'?'Password must be at least 6 characters.':code==='username/already-taken'?(raw||'That username is already taken. Please choose another username.'):code==='permission-denied'?'Your account could not be saved because Firestore denied the profile write. Please check the customer profile rules.':raw||'The account could not be created.';
         authStatus(msg,true);
         showSystemError('Account creation failed.',msg);
         return;
@@ -129,9 +174,7 @@ document.getElementById('sfCustomerAuthForm')?.addEventListener('submit',async e
     const cred=await signInWithEmailAndPassword(auth,email,pw);
     await reload(cred.user);
     if(!cred.user.emailVerified){
-      const profileSnap=await getDoc(doc(db,'customerProfiles',cred.user.uid)).catch(()=>null);
-      const profileData=profileSnap?.exists()?profileSnap.data():{};
-      await sendVerification(cred.user,profileData).catch(()=>{});
+      await sendEmailVerification(cred.user,{url:'https://steadfast-cliffjandee.pages.dev/store.html?verified=1',handleCodeInApp:false}).catch(()=>{});
       await signOut(auth);
       authStatus('Your email is not verified yet. We sent another verification link to '+email+'. Verify it first, then sign in again.',true);
       return;
