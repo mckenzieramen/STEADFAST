@@ -72,7 +72,8 @@ service cloud.firestore {
         && request.resource.data.customerEmail == request.auth.token.email;
 
       // Admin can see all orders.
-      allow read: if isAdmin();
+      allow read: if isAdmin()
+        || (isVerifiedCustomer() && resource.data.customerUid == request.auth.uid);
 
       // Customer can read their own order.
       allow get: if ownsOrder();
