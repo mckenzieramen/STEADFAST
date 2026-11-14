@@ -59,3 +59,40 @@
 .catalog-shop .catalog-actions .btn:disabled { margin-left: auto; }
 .catalog-media > span, .catalog-modal-media > span { font-weight: 600; font-size: .9rem; }
 .catalog-modal-media img { object-position: center; }
+
+.studio-hero {
+  background: radial-gradient(ellipse at 85% 20%, #34234e 0%, transparent 48%), #141021;
+  color: #faf7ff;
+  font-family: "Instrument Sans", system-ui, sans-serif;
+  scroll-margin-top: 72px;
+}
+.studio-hero-inner {
+  width: min(100%, 1280px);
+  box-sizing: border-box;
+  margin-inline: auto;
+  padding: clamp(112px, 13vw, 170px) clamp(18px, 4vw, 44px) clamp(48px, 8vw, 100px);
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(230px, .9fr);
+  align-items: end;
+  gap: clamp(28px, 7vw, 100px);
+}
+.studio-intro .studio-name { margin: 0 0 18px; color: #d7baff; font-weight: 600; }
+.studio-intro h1 { margin: 0; max-width: 16ch; font-size: clamp(40px, 6vw, 84px); line-height: .99; letter-spacing: -.055em; }
+.studio-intro > p:not(.studio-name) { color: #ded3ea; max-width: 42ch; margin: 20px 0 0; line-height: 1.55; }
+.studio-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 15px 22px; margin-top: 26px; }
+.studio-link { color: #f2e8ff; text-decoration: underline; text-underline-offset: 4px; }
+.studio-shortcuts { border-top: 1px solid #705985; }
+.studio-shortcuts a { display: flex; align-items: center; justify-content: space-between; gap: 8px; color: #faf7ff; padding: 17px 0; border-bottom: 1px solid #705985; }
+.studio-shortcuts a:hover { color: #dcc4ff; }
+.studio-shortcuts small { display: block; margin-top: 4px; color: #ded3ea; }
+.studio-hero a:focus-visible { outline: 2px solid #e2cfff; outline-offset: 4px; }
+.catalog-toolbar { display: grid; grid-template-columns: minmax(0, 280px) 1fr; align-items: end; justify-content: space-between; gap: 14px 24px; }
+.catalog-search { display: grid; gap: 6px; }
+.catalog-search input { width: 100%; box-sizing: border-box; }
+.catalog-options, .catalog-filters { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.catalog-options { justify-content: space-between; }
+.catalog-filters button { border: 1px solid #ded2ea; background: #fff; color: #3a294e; border-radius: 999px; padding: 8px 12px; font: inherit; font-size: .84rem; cursor: pointer; }
+.catalog-filters button[aria-pressed="true"] { background: #2b1c40; color: #fff; border-color: #2b1c40; }
+@media (max-width: 740px) {
+  .studio-hero-inner, .catalog-toolbar { grid-template-columns: 1fr; }
+}

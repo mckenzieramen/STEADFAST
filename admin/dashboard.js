@@ -35,14 +35,7 @@ const detailCountry = document.getElementById("detailCountry");
 const detailNextStep = document.getElementById("detailNextStep");
 const detailRequirements = document.getElementById("detailRequirements");
 const detailAddons = document.getElementById("detailAddons");
-const emailTo = document.getElementById("emailTo");
-const emailSubject = document.getElementById("emailSubject");
-const emailBody = document.getElementById("emailBody");
-const sendEmailBtn = document.getElementById("sendEmailBtn");
-const clearEmailBtn = document.getElementById("clearEmailBtn");
-const useQuoteTemplate = document.getElementById("useQuoteTemplate");
 const gmailStatus = document.getElementById("gmailStatus");
-const gmailEmailStatus = document.getElementById("gmailEmailStatus");
 const ticketList = document.getElementById("ticketList");
 const ticketSearch = document.getElementById("ticketSearch");
 const clearTicketSearch = document.getElementById("clearTicketSearch");
@@ -295,8 +288,95 @@ newTicketBtn?.addEventListener('click',()=>showSection('quotations'));
 function showAuthState(name,email){if(adminName)adminName.textContent=name;if(adminEmail)adminEmail.textContent=email;}
 function finishAdminAuth(user){if(!user){window.location.replace('./index.html?loggedOut=1');return;}const email=(user.email||'').toLowerCase().trim();if(!isAuthorized(email)){signOut(auth).finally(()=>window.location.replace('./index.html?loggedOut=1'));return;}showAuthState(user.displayName||'Cliff Jandee',email);if(avatar){avatar.src=user.photoURL||'../assets/steadfast-mark.png';}const gmailLabel = emailCfg.webAppUrl ? "Configured" : "Setup required";
   document.getElementById("dashboardGmailStatus").textContent = gmailLabel;
-  gmailStatus.textContent = gmailLabel.toUpperCase();
+  document.getElementById("openGmail").href = `https://mail.google.com/mail/u/${encodeURIComponent(email)}/#inbox`;
+  gmailStatus.textContent = "Select Refresh to load your inbox.";
+  if (document.getElementById("email").classList.contains("active")) loadInbox();
   subscribeToQuotations();}
 window.steadfastLogout=window.steadfastLogout||function(){try{sessionStorage.clear();}catch(e){}window.location.replace('./index.html?loggedOut=1');return false;};
 logoutBtn?.addEventListener('click',event=>{event.preventDefault();window.steadfastLogout();});
+
+const inboxList = document.getElementById("gmailMessages");
+const inboxReader = document.getElementById("gmailReader");
+const inboxMore = document.getElementById("gmailMore");
+let inboxPage = "";
+let inboxRequested = false;
+let inboxLoading = false;
+let activeMessageRequest = 0;
+
+async function requestAdminMail(action, parameters = {}) {
+  const user = auth.currentUser;
+  if (!isAuthorized(user?.email)) throw new Error("Sign in with your admin account.");
+  if (!emailCfg.webAppUrl) throw new Error("The Gmail bridge URL is missing.");
+  const idToken = await user.getIdToken();
+  const response = await fetch(emailCfg.webAppUrl, {
+    method: "POST",
+    body: new URLSearchParams({ action, idToken, ...parameters }),
+    signal: AbortSignal.timeout(18000)
+  });
+  const result = await response.json();
+  if (!response.ok || !result.ok) throw new Error(result.error || "Gmail could not be loaded.");
+  return result;
+}
+
+function mailText(tag, value) {
+  const element = document.createElement(tag);
+  element.textContent = value;
+  return element;
+}
+
+async function loadInbox(append = false) {
+  if (inboxLoading || (append && !inboxPage)) return;
+  inboxLoading = true;
+  inboxRequested = true;
+  inboxMore.disabled = true;
+  gmailStatus.textContent = "Loading inbox…";
+  try {
+    const data = await requestAdminMail("adminInbox", append ? { page: inboxPage } : {});
+    if (!append) inboxList.replaceChildren();
+    for (const message of data.messages) {
+      const item = document.createElement("li");
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset.unread = String(message.unread);
+      button.append(mailText("strong", message.subject), mailText("span", message.from));
+      button.addEventListener("click", () => showMailMessage(message.id, button));
+      item.append(button);
+      inboxList.append(item);
+    }
+    inboxPage = data.nextPage;
+    inboxMore.hidden = !inboxPage;
+    gmailStatus.textContent = inboxList.children.length ? `${inboxList.children.length} messages loaded` : "Your inbox is empty.";
+  } catch (error) {
+    gmailStatus.textContent = error.message === "Unknown action."
+      ? "The Gmail bridge needs its inbox update. You can open Gmail directly."
+      : "Could not load the inbox. Open Gmail or try Refresh.";
+  } finally {
+    inboxLoading = false;
+    inboxMore.disabled = false;
+  }
+}
+
+async function showMailMessage(id, button) {
+  const request = ++activeMessageRequest;
+  inboxList.querySelectorAll("[aria-current]").forEach(item => item.removeAttribute("aria-current"));
+  button.setAttribute("aria-current", "true");
+  inboxReader.textContent = "Loading message…";
+  try {
+    const { message, text } = await requestAdminMail("adminMailDetail", { id });
+    if (request !== activeMessageRequest) return;
+    inboxReader.replaceChildren(
+      mailText("h3", message.subject),
+      mailText("p", message.from),
+      mailText("small", message.date ? new Date(message.date).toLocaleString() : ""),
+      mailText("div", text || message.snippet || "Open Gmail to read the full message.")
+    );
+  } catch {
+    if (request === activeMessageRequest) inboxReader.textContent = "Could not open this message. Open Gmail to read it.";
+  }
+}
+document.getElementById("gmailRefresh").addEventListener("click", () => loadInbox());
+inboxMore.addEventListener("click", () => loadInbox(true));
+document.querySelector('[data-section="email"]').addEventListener("click", () => {
+  if (!inboxRequested && isAuthorized(auth.currentUser?.email)) loadInbox();
+});
 onAuthStateChanged(auth,finishAdminAuth,error=>{console.error('STEADFAST Firebase Auth state error:',error);});

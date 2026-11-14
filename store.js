@@ -409,15 +409,19 @@ const catalogSearch = document.getElementById("catalogSearch");
 const catalogGrid = document.getElementById("steadfastStoreGrid");
 const catalogCount = document.getElementById("catalogCount");
 let storeLoaded = false;
+let catalogFilter = "all";
+const filterButtons = [...document.querySelectorAll("[data-catalog-filter]")];
 
 function renderCatalog() {
   const search = catalogSearch.value.trim().toLowerCase();
-  const matches = products.filter(product =>
-    `${product.name || ""} ${product.description || ""}`.toLowerCase().includes(search)
-  );
+  const matches = products.filter(product => {
+    if (catalogFilter === "available" && !(Number(product.stock) > 0)) return false;
+    if (catalogFilter === "demo" && !webUrl(product.previewUrl)) return false;
+    return `${product.name || ""} ${product.description || ""}`.toLowerCase().includes(search);
+  });
   catalogCount.textContent = `${matches.length} ${matches.length === 1 ? "product" : "products"}`;
   if (matches.length) catalogGrid.replaceChildren(...matches.map(productCard));
-  else catalogGrid.innerHTML = search
+  else catalogGrid.innerHTML = search || catalogFilter !== "all"
     ? '<p class="catalog-status">No products match your search.</p>'
     : '<p class="catalog-status">No products available yet.</p>';
 }
@@ -436,6 +440,11 @@ function loadStore() {
   });
 }
 catalogSearch.addEventListener("input", () => { if (storeLoaded) renderCatalog(); });
+filterButtons.forEach(button => button.addEventListener("click", () => {
+  catalogFilter = button.dataset.catalogFilter;
+  filterButtons.forEach(option => option.setAttribute("aria-pressed", String(option === button)));
+  if (storeLoaded) renderCatalog();
+}));
 document.addEventListener("click", event => {
   if (event.target.closest("[data-close-preview]")) closeProductPreview();
   const trigger = event.target.closest("[data-preview]");

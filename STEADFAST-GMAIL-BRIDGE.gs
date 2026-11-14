@@ -59,6 +59,14 @@ function doPost(e) {
     const p = (e && e.parameter) ? e.parameter : {};
     const action = String(p.action || '').trim();
 
+    if (action === 'adminInbox' || action === 'adminMailDetail') {
+      const user = lookupFirebaseUser_(String(p.idToken || ''));
+      if (user.email !== ADMIN_EMAIL || user.emailVerified !== true) {
+        return json_({ ok: false, error: 'Admin Gmail access denied.' });
+      }
+      return json_(action === 'adminInbox' ? listAdminInbox_(p) : readAdminMail_(p));
+    }
+
     if (action === 'sendQuoteEmail') return sendQuoteEmail_(p);
     if (action === 'sendEmail') return sendAdminEmail_(p);
     if (action === 'paymentSubmitted') return sendPaymentSubmittedEmail_(p);
@@ -242,6 +250,59 @@ function lookupFirebaseUser_(idToken) {
     throw new Error('Your sign-in session is no longer valid. Please sign in again.');
   }
   return body.users[0];
+}
+
+function gmailRequest_(path) {
+  return {
+    url: 'https://gmail.googleapis.com/gmail/v1/users/me/' + path,
+    headers: { Authorization: 'Bearer ' + ScriptApp.getOAuthToken() },
+    muteHttpExceptions: true
+  };
+}
+
+function parseGmailResponse_(response) {
+  if (response.getResponseCode() !== 200) {
+    throw new Error('Gmail read access is unavailable. Check the bridge deployment and authorization.');
+  }
+  return JSON.parse(response.getContentText());
+}
+
+function gmailMetadata_(message) {
+  const headers = (message.payload && message.payload.headers) || [];
+  const header = name => (headers.find(item => item.name.toLowerCase() === name) || {}).value || '';
+  return {
+    id: message.id,
+    from: header('from'),
+    subject: header('subject') || '(No subject)',
+    date: Number(message.internalDate) || 0,
+    unread: (message.labelIds || []).includes('UNREAD'),
+    snippet: message.snippet || ''
+  };
+}
+
+function listAdminInbox_(params) {
+  const request = gmailRequest_('messages?labelIds=INBOX&maxResults=15' + (params.page ? '&pageToken=' + encodeURIComponent(params.page) : ''));
+  const page = parseGmailResponse_(UrlFetchApp.fetch(request.url, request));
+  const requests = (page.messages || []).map(message =>
+    gmailRequest_('messages/' + encodeURIComponent(message.id) + '?format=metadata&metadataHeaders=From&metadataHeaders=Subject')
+  );
+  const messages = requests.length ? UrlFetchApp.fetchAll(requests).map(parseGmailResponse_).map(gmailMetadata_) : [];
+  return { ok: true, messages, nextPage: page.nextPageToken || '' };
+}
+
+function readAdminMail_(params) {
+  const id = String(params.id || '');
+  if (!/^[a-z0-9]+$/i.test(id)) throw new Error('Invalid message.');
+  const request = gmailRequest_('messages/' + encodeURIComponent(id) + '?format=full');
+  const message = parseGmailResponse_(UrlFetchApp.fetch(request.url, request));
+  function plainText(part) {
+    if (!part) return '';
+    if (part.mimeType === 'text/plain' && part.body && part.body.data) {
+      return Utilities.newBlob(Utilities.base64DecodeWebSafe(part.body.data)).getDataAsString();
+    }
+    return (part.parts || []).map(plainText).filter(Boolean).join('\n');
+  }
+  return { ok: true, message: gmailMetadata_(message), text: plainText(message.payload).slice(0, 24000) };
 }
 
 function makeVerificationCode_() {

@@ -57,3 +57,26 @@ body{min-height:100vh;overflow-x:hidden}.app{display:flex;min-height:100vh}.side
 
 .metrics .metric-card:hover, .metrics .metric-card:focus-visible{border-color:#a78bfa;background:rgba(139,92,246,.12)}
 .metrics .metric-card:focus-visible{outline:2px solid #a78bfa;outline-offset:2px}
+.mail-workspace { background: #faf8fd; color: #221b2d; border: 1px solid #e4dcee; border-radius: 18px; overflow: hidden; }
+.mail-header { padding: 22px; display: flex; justify-content: space-between; align-items: center; gap: 14px; flex-wrap: wrap; }
+.mail-header h2 { font-size: 24px; margin: 0 0 4px; }
+.mail-header p { margin: 0; color: #665a72; }
+.mail-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.mail-actions a, .mail-actions button, #gmailMore { background: #fff; color: #4c267f; border: 1px solid #d9cce8; border-radius: 8px; padding: 8px 12px; font: inherit; cursor: pointer; }
+.mail-grid { display: grid; grid-template-columns: minmax(180px, 1fr) minmax(0, 2fr); border-top: 1px solid #e5dceb; }
+.mail-sidebar { padding: 12px; border-right: 1px solid #e5dceb; }
+.mail-sidebar ul { list-style: none; margin: 0; padding: 0; }
+.mail-sidebar li + li { margin-top: 4px; }
+.mail-sidebar li button { display: grid; gap: 3px; width: 100%; color: #221b2d; background: transparent; border: 1px solid transparent; text-align: left; border-radius: 8px; padding: 10px; font: inherit; cursor: pointer; overflow-wrap: anywhere; }
+.mail-sidebar li button:hover, .mail-sidebar li button[aria-current] { background: #f0e7fb; border-color: #e1d2ef; }
+.mail-sidebar li button[data-unread="false"] strong { font-weight: 500; }
+.mail-sidebar li span, .mail-reader small { color: #665a72; }
+#gmailMore { margin-top: 12px; }
+.mail-reader { min-height: 270px; background: #fff; padding: 22px; overflow-wrap: anywhere; }
+.mail-reader h3 { font-size: 19px; margin: 0 0 6px; }
+.mail-reader p { margin: 0 0 4px; }
+.mail-reader div { margin-top: 18px; white-space: pre-wrap; line-height: 1.6; }
+@media (max-width: 720px) {
+  .mail-grid { grid-template-columns: 1fr; }
+  .mail-sidebar { border-right: 0; border-bottom: 1px solid #e5dceb; max-height: 260px; overflow: auto; }
+}

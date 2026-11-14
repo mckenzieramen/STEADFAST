@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#080810">
   <title>STEADFAST Admin Dashboard</title>
-  <link rel="stylesheet" href="./dashboard.css?v=2">
+  <link rel="stylesheet" href="./dashboard.css?v=3">
 
 <script>
 (function(){
@@ -221,8 +221,21 @@
       <section id="leads" class="section"><div class="empty-panel"><h2>Leads</h2><p>Track new leads, contacted leads, proposal stages, and conversions.</p></div></section>
       <section id="clients" class="section"><div class="empty-panel"><h2>Clients</h2><p>Manage approved and active website clients.</p></div></section>
       <section id="email" class="section">
-        <div class="panel email-panel"><div class="panel-head"><div><p class="kicker">STEADFAST ADMIN</p><h2>Email / Gmail</h2><p>Send customer messages through your authorized Gmail account.</p></div><span class="gmail-status" id="gmailStatus">STATUS UNAVAILABLE</span></div>
-          <div class="email-grid"><div class="email-composer"><label>To<input id="emailTo" type="email" placeholder="customer@example.com"></label><label>Subject<input id="emailSubject" type="text" value="Regarding your STEADFAST website quotation"></label><label>Message<textarea id="emailBody" rows="10" placeholder="Write your message..."></textarea></label><div class="email-actions"><button class="primary" id="sendEmailBtn" type="button">Send via Gmail</button><button class="text-btn" id="clearEmailBtn" type="button">Clear</button></div><p class="email-status" id="gmailEmailStatus"></p><small class="email-note">Gmail sending is handled by your Google Apps Script Web App. No Gmail password is stored in STEADFAST.</small></div><aside class="email-template-card"><span class="template-label">QUICK TEMPLATE</span><h3>Quotation follow-up</h3><p>Use this after reviewing a customer's website requirements.</p><button class="text-btn" id="useQuoteTemplate" type="button">Use template</button></aside></div>
+        <div class="mail-workspace">
+          <header class="mail-header">
+            <div><h2>Gmail Inbox</h2><p id="gmailStatus" role="status">Sign in to load your inbox.</p></div>
+            <div class="mail-actions">
+              <button id="gmailRefresh" type="button">Refresh</button>
+              <a href="https://mail.google.com/" id="openGmail" target="_blank" rel="noopener noreferrer">Open Gmail ↗</a>
+            </div>
+          </header>
+          <div class="mail-grid">
+            <div class="mail-sidebar">
+              <ul id="gmailMessages" aria-label="Inbox messages"></ul>
+              <button id="gmailMore" type="button" hidden>Load more</button>
+            </div>
+            <article id="gmailReader" class="mail-reader" aria-live="polite">Select a message to read it.</article>
+          </div>
         </div>
       </section>
       <section id="analytics" class="section"><div class="empty-panel"><h2>Analytics</h2><p>Quotes, requested website types, average estimates, countries, currencies, and conversion data will appear here.</p></div></section>
@@ -247,7 +260,7 @@
   });
   </script>
   <script src="../email-config.js"></script>
-  <script type="module" src="./dashboard.js?v=35"></script>
+  <script type="module" src="./dashboard.js?v=36"></script>
   <script type="module" src="./commerce-admin.js?v=33"></script>
 </body>
 </html>
