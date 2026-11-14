@@ -96,7 +96,7 @@ function postToGmailBridge(payload){ if(!emailCfg.webAppUrl)return false; try{co
 
 async function ensureTicketNumbers(items){if(ticketNumberingRunning)return;const missing=items.filter(q=>!/^ST-\d{3,}$/.test(String(q.ticketNumber||""))).sort((a,b)=>toMillis(a.createdAt||a.created)-toMillis(b.createdAt||b.created));if(!missing.length)return;ticketNumberingRunning=true;try{let max=items.reduce((m,q)=>{const hit=String(q.ticketNumber||"").match(/^ST-(\d+)$/);return hit?Math.max(m,Number(hit[1])):m;},0);for(const q of missing){max+=1;await updateDoc(doc(db,'quotations',q.id),{ticketNumber:`ST-${String(max).padStart(3,'0')}`,ticketStatus:normalizeStatus(q),ticketUpdatedAt:new Date()});}}catch(e){console.warn('Could not assign ticket numbers',e)}finally{ticketNumberingRunning=false;}}
 function sortQuotations(items){return [...items].sort((a,b)=>(ticketSort==='desc'?1:-1)*(toMillis(a.createdAt||a.created)-toMillis(b.createdAt||b.created)));}
-function renderRecent(items){if(!dashboardRecentRows)return;const recent=[...items].sort((a,b)=>toMillis(b.createdAt||b.created)-toMillis(a.createdAt||a.created)).slice(0,5);if(!recent.length){dashboardRecentRows.innerHTML='<tr><td colspan="5">No quotations received yet.</td></tr>';return;}dashboardRecentRows.innerHTML=recent.map(q=>`<tr><td><strong>${escapeHtml(q.customerName||'Unknown')}</strong><small>${escapeHtml(q.customerEmail||'')}</small></td><td>${escapeHtml(q.service||'—')}</td><td>${escapeHtml(q.estimate||'—')} ${escapeHtml(q.currency||'')}</td><td><span class="pill ${statusClass(normalizeStatus(q))}">${escapeHtml(normalizeStatus(q))}</span></td><td>${formatDate(q.createdAt||q.created)}</td></tr>`).join('');}
+function renderRecent(items){if(!dashboardRecentRows)return;const recent=[...items].sort((a,b)=>toMillis(b.createdAt||b.created)-toMillis(a.createdAt||a.created)).slice(0,5);if(!recent.length){dashboardRecentRows.innerHTML='<tr><td colspan="5">No quotations received yet.</td></tr>';return;}dashboardRecentRows.innerHTML=recent.map(q=>`<tr><td><strong><button type="button" class="text-btn" data-recent-quote="${escapeHtml(q.id)}">${escapeHtml(q.customerName||'Unknown')}</button></strong><small>${escapeHtml(q.customerEmail||'')}</small></td><td>${escapeHtml(q.service||'—')}</td><td>${escapeHtml(q.estimate||'—')} ${escapeHtml(q.currency||'')}</td><td><span class="pill ${statusClass(normalizeStatus(q))}">${escapeHtml(normalizeStatus(q))}</span></td><td>${formatDate(q.createdAt||q.created)}</td></tr>`).join('');}
 function renderQuotations(items){if(!quotationRows)return;const rows=sortQuotations(items);if(!rows.length){quotationRows.innerHTML='<tr><td colspan="7">No quotations received yet.</td></tr>';return;}quotationRows.innerHTML=rows.map(q=>`<tr><td><strong>${escapeHtml(ticketLabel(q))}</strong></td><td><strong>${escapeHtml(q.customerName||'Unknown')}</strong><small>${escapeHtml(q.customerEmail||'')}</small></td><td>${escapeHtml(q.service||'—')}</td><td>${escapeHtml(q.estimate||'—')} ${escapeHtml(q.currency||'')}</td><td><span class="pill ${statusClass(normalizeStatus(q))}">${escapeHtml(normalizeStatus(q))}</span></td><td>${formatDate(q.createdAt||q.created)}</td><td><button class="text-btn view-quote" data-id="${escapeHtml(q.id)}">View</button></td></tr>`).join('');quotationRows.querySelectorAll('.view-quote').forEach(btn=>btn.addEventListener('click',()=>openQuotation(btn.dataset.id)));}
 function updateDashboardMetrics(items) {
   const counts = { Open: 0, Pending: 0, "On Hold": 0, Solved: 0, Merged: 0 };
@@ -273,7 +273,23 @@ for (const id of ["refreshTickets", "retryDashboardQuotations", "retryQuotationL
     if (isAuthorized(auth.currentUser?.email)) subscribeToQuotations();
   });
 }
-document.getElementById("quoteNotifications").addEventListener("click", () => showSection("quotations"));
+function showFilteredTickets(filter) {
+  if (ticketSearch) ticketSearch.value = "";
+  applyTicketFilter(filter);
+  showSection("support");
+}
+
+document.querySelectorAll("[data-metric-filter]").forEach(button => {
+  button.addEventListener("click", () => showFilteredTickets(button.dataset.metricFilter));
+});
+document.getElementById("quoteNotifications").addEventListener("click", () => showFilteredTickets("Open"));
+dashboardRecentRows.addEventListener("click", event => {
+  const button = event.target.closest("[data-recent-quote]");
+  if (!button || !quotationMap.has(button.dataset.recentQuote)) return;
+  showSection("quotations");
+  openQuotation(button.dataset.recentQuote);
+  quoteDetail.scrollIntoView({ block: "nearest" });
+});
 newTicketBtn?.addEventListener('click',()=>showSection('quotations'));
 
 function showAuthState(name,email){if(adminName)adminName.textContent=name;if(adminEmail)adminEmail.textContent=email;}

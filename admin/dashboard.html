@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#080810">
   <title>STEADFAST Admin Dashboard</title>
-  <link rel="stylesheet" href="./dashboard.css">
+  <link rel="stylesheet" href="./dashboard.css?v=2">
 
 <script>
 (function(){
@@ -81,7 +81,7 @@
           <div><p class="kicker">STEADFAST ADMIN</p><h1 id="pageTitle">Dashboard</h1></div>
         </div>
         <div class="top-actions">
-          <button class="icon-btn" type="button" id="quoteNotifications" aria-label="View new quotations"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span class="notification-dot" id="quoteNotificationCount" hidden></span></button>
+          <button class="icon-btn" type="button" id="quoteNotifications" aria-label="View open tickets"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span class="notification-dot" id="quoteNotificationCount" hidden></span></button>
           <button class="icon-btn" type="button" aria-label="Toggle dark mode"><svg viewBox="0 0 24 24"><path d="M20.8 14.7A8.4 8.4 0 0 1 9.3 3.2 8.9 8.9 0 1 0 20.8 14.7Z"/></svg></button>
           <div class="account"><div class="account-details"><strong id="adminName">Checking account…</strong><span id="adminEmail">Authenticating…</span></div><span class="avatar-ring"><img id="adminAvatar" class="avatar" src="../assets/steadfast-mark.png" alt="STEADFAST"></span><span class="chevron"><svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></span></div>
         </div>
@@ -90,11 +90,11 @@
       <section id="dashboard" class="section active">
         <div class="welcome"><div><span>Welcome back, Cliff.</span><h2>Manage your website inquiries.</h2></div><a class="primary" href="../index.html#quote">View Website</a></div>
         <div class="metrics">
-          <article><span>Total Quotes</span><strong id="metricTotal">—</strong><small>All website submissions</small></article>
-          <article><span>Pending</span><strong id="metricPending">—</strong><small>Awaiting response</small></article>
-          <article><span>Open</span><strong id="metricOpen">—</strong><small>Needs attention</small></article>
-          <article><span>On Hold</span><strong id="metricHold">—</strong><small>Paused tickets</small></article>
-          <article><span>Solved</span><strong id="metricSolved">—</strong><small>Resolved tickets</small></article>
+          <button type="button" class="metric-card" data-metric-filter="all"><span>Total Quotes</span><strong id="metricTotal">—</strong><small>All website submissions</small></button>
+          <button type="button" class="metric-card" data-metric-filter="Pending"><span>Pending</span><strong id="metricPending">—</strong><small>Awaiting response</small></button>
+          <button type="button" class="metric-card" data-metric-filter="Open"><span>Open</span><strong id="metricOpen">—</strong><small>Needs attention</small></button>
+          <button type="button" class="metric-card" data-metric-filter="On Hold"><span>On Hold</span><strong id="metricHold">—</strong><small>Paused tickets</small></button>
+          <button type="button" class="metric-card" data-metric-filter="Solved"><span>Solved</span><strong id="metricSolved">—</strong><small>Resolved tickets</small></button>
         </div>
         <div class="grid two">
           <article class="panel wide"><div class="panel-head"><div><h3>Recent Website Quotations</h3><p>Latest client submissions.</p></div><div><button class="text-btn" id="retryDashboardQuotations" type="button">Retry</button> <button class="text-btn" data-section-link="quotations">View all</button></div></div><div class="table-wrap"><table><thead><tr><th>Client</th><th>Website</th><th>Budget</th><th>Status</th><th>Date</th></tr></thead><tbody id="dashboardRecentRows"><tr><td colspan="5">Loading quotations…</td></tr></tbody></table></div></article>
@@ -247,7 +247,7 @@
   });
   </script>
   <script src="../email-config.js"></script>
-  <script type="module" src="./dashboard.js?v=34"></script>
+  <script type="module" src="./dashboard.js?v=35"></script>
   <script type="module" src="./commerce-admin.js?v=33"></script>
 </body>
 </html>
