@@ -267,6 +267,13 @@ function parseGmailResponse_(response) {
   return JSON.parse(response.getContentText());
 }
 
+// Run once in the Apps Script editor as the web app owner to verify Gmail read access.
+function authorizeAdminInbox() {
+  const request = gmailRequest_('profile');
+  parseGmailResponse_(UrlFetchApp.fetch(request.url, request));
+  return 'Gmail inbox read access is ready.';
+}
+
 function gmailMetadata_(message) {
   const headers = (message.payload && message.payload.headers) || [];
   const header = name => (headers.find(item => item.name.toLowerCase() === name) || {}).value || '';

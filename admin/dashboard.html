@@ -200,17 +200,18 @@
               <input type="hidden" id="projectId">
               <label>Project title<input id="projectTitle" required placeholder="Project name"></label>
               <label>Category / tag<input id="projectCategory" placeholder="WEB · SYSTEMS · CUSTOMER EXPERIENCE"></label>
-              <label>Objective<textarea id="projectObjective" rows="3" required placeholder="What was the project designed to accomplish?"></textarea></label>
-              <label>Description<textarea id="projectDescription" rows="3" required placeholder="Short project overview"></textarea></label>
-              <label>Live preview URL<input id="projectPreviewUrl" type="url" required placeholder="https://..."></label>
+              <label>Objective<textarea id="projectObjective" rows="3" placeholder="What was the project designed to accomplish?"></textarea></label>
+              <label>Description<textarea id="projectDescription" rows="3" placeholder="Short project overview"></textarea></label>
+              <label>Live preview URL<input id="projectPreviewUrl" type="url" placeholder="https://..."></label>
               <label>Visit URL<input id="projectVisitUrl" type="url" required placeholder="https://..."></label>
               <label>Preview image upload<input id="projectImageFile" type="file" accept="image/*"></label>
               <label>Preview image URL<input id="projectImage" type="url" placeholder="https://..."></label>
-              <label>Details page URL<input id="projectDetailsUrl" type="url" placeholder="project.html"></label>
-              <label class="check-row"><input id="projectPublished" type="checkbox" checked> Publish in Works</label>
-              <button class="primary" type="submit">Publish Project</button>
+              <label>Details page URL<input id="projectDetailsUrl" type="text" placeholder="project.html"></label>
+              <label class="check-row"><input id="projectPublished" type="checkbox" checked> Publish in Live Projects</label>
+              <button class="primary" id="saveProjectBtn" type="submit">Publish project</button>
+              <p id="projectStatus" role="status"></p>
             </form>
-            <div class="panel"><div class="panel-head"><div><h3>Published projects</h3><p>Live preview + objective + Visit button.</p></div></div><div id="adminProjectList" class="commerce-list"><div class="empty-state">Loading projects…</div></div></div>
+            <div class="panel"><div class="panel-head"><div><h3>Projects</h3><p>Manage homepage listings and drafts.</p></div></div><div id="adminProjectList" class="commerce-list"><div class="empty-state">Loading projects…</div></div></div>
           </div>
         </div>
         <div class="commerce-panel" id="commerce-orders" hidden>
@@ -261,6 +262,6 @@
   </script>
   <script src="../email-config.js"></script>
   <script type="module" src="./dashboard.js?v=36"></script>
-  <script type="module" src="./commerce-admin.js?v=33"></script>
+  <script type="module" src="./commerce-admin.js?v=34"></script>
 </body>
 </html>

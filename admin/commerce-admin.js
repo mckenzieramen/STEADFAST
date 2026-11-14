@@ -32,14 +32,112 @@ document.head.appendChild(productStyle);
 
 function timeout(p,ms,msg){return Promise.race([p,new Promise((_,r)=>setTimeout(()=>r(new Error(msg)),ms))]);}
 function button(t,off=false){const b=$("saveProductBtn");if(b){b.textContent=t;b.disabled=off;}}
-async function image(file){const safe=file.name.replace(/[^a-z0-9._-]/gi,"-");const r=ref(storage,`store/previews/${Date.now()}-${safe}`);await timeout(uploadBytes(r,file,{contentType:file.type||"image/*"}),10000,"Preview image upload timed out");return timeout(getDownloadURL(r),7000,"Preview image URL timed out");}
+async function image(file, folder = "store/previews"){const safe=file.name.replace(/[^a-z0-9._-]/gi,"-");const r=ref(storage,`${folder}/${crypto.randomUUID()}-${safe}`);await timeout(uploadBytes(r,file,{contentType:file.type||"image/*"}),10000,"Preview image upload timed out");return timeout(getDownloadURL(r),7000,"Preview image URL timed out");}
 async function hash(s){const h=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(s));return [...new Uint8Array(h)].map(x=>x.toString(16).padStart(2,"0")).join("");}
 async function saveProduct(e){e.preventDefault();e.stopImmediatePropagation();const u=auth.currentUser;if(!allowed(u)){alert(u?`Unauthorized admin account: ${u.email}`:"Please sign in again before publishing.");button("Publish Product");return;}const name=val("productName"),price=Number(val("productPrice")||0);if(!name){alert("Please enter the Product name.");return;}button("Publishing…",true);try{const id=val("productId"),old=(products.get(id)||{}).previewImages||[],pics=[];let warning="";for(const f of [...($("productPreviewFiles")?.files||[])].slice(0,8)){button("Uploading preview…",true);try{pics.push(await image(f));}catch(err){console.warn(err);warning=err.message||"Preview upload failed";break;}}button("Saving product…",true);const code=val("productAccessCode"),data={name,description:val("productDescription"),price,currency:val("productCurrency")||"PHP",stock:Math.max(0,Number(val("productStock")||0)),paymentMethod:val("productPaymentMethod")||"GCash",previewUrl:val("productPreviewUrl"),previewImages:[...old,...pics].filter(Boolean).slice(0,8),paymentUrl:val("productPaymentUrl"),unlockUrl:val("productUnlockUrl"),accessUsername:val("productAccessUsername"),accessPassword:val("productAccessPassword"),active:$("productActive")?.checked!==false,updatedAt:serverTimestamp()};if(code)data.accessCodeHash=await hash(code);if(id)await timeout(updateDoc(doc(db,"storeProducts",id),data),12000,"Product save timed out");else await timeout(addDoc(collection(db,"storeProducts"),{...data,createdAt:serverTimestamp()}),12000,"Product publish timed out");button("Published ✓",true);clearProduct();setTimeout(()=>button("Publish Product"),1200);if(warning)alert(`Product published. The image was skipped because: ${warning}. You can edit it and retry the image later.`);}catch(err){console.error("Publish failed",err);button("Publish failed");alert("Could not publish product: "+(err.message||err));setTimeout(()=>button("Publish Product"),1800);}}
 function clearProduct(){["productId","productName","productDescription","productPrice","productPreviewUrl","productPaymentUrl","productUnlockUrl","productAccessCode","productAccessUsername","productAccessPassword"].forEach(x=>{if($(x))$(x).value=""});if($("productPreviewFiles"))$("productPreviewFiles").value="";if($("productStock"))$("productStock").value="1";if($("productActive"))$("productActive").checked=true;if($("productFormTitle"))$("productFormTitle").textContent="Create product";}
 function editProduct(p){if(!p)return;for(const [id,key] of [["productId","id"],["productName","name"],["productDescription","description"],["productPrice","price"],["productCurrency","currency"],["productStock","stock"],["productPaymentMethod","paymentMethod"],["productPreviewUrl","previewUrl"],["productPaymentUrl","paymentUrl"],["productUnlockUrl","unlockUrl"],["productAccessUsername","accessUsername"],["productAccessPassword","accessPassword"]])if($(id))$(id).value=p[key]??"";$("productFormTitle").textContent="Edit product";}
-function loadProducts(){const host=$("adminProductList");if(!host)return;onSnapshot(collection(db,"storeProducts"),s=>{products.clear();s.forEach(d=>products.set(d.id,{id:d.id,...d.data()}));host.innerHTML=products.size?[...products.values()].map(p=>{const img=p.previewImages?.[0]||"";const initial=esc((p.name||"P").trim().charAt(0).toUpperCase());return `<div class="commerce-item"><div class="product-thumb">${img?`<img src="${esc(img)}" alt="${esc(p.name||"Product")}">`:initial}</div><div class="product-copy"><strong>${esc(p.name||"Untitled")}</strong><div class="product-meta"><span class="product-price">${esc(p.currency||"PHP")} ${Number(p.price||0).toFixed(2)}</span><span class="product-stock">Stock ${Number(p.stock||0)}</span><span class="product-status">${p.active===false?"Hidden":"Published"}</span></div></div><div class="commerce-item-actions"><button type="button" data-edit-product="${p.id}">Edit</button><button type="button" class="danger" data-delete-product="${p.id}">Delete</button></div></div>`;}).join(""):'<div class="empty-state">No products yet.</div>';},err=>host.innerHTML=`<div class="empty-state">${esc(err.message)}</div>`);}
-async function saveProject(e){e.preventDefault();if(!allowed(auth.currentUser)){alert("Admin session is not authorized.");return;}try{const id=val("projectId"),data={title:val("projectTitle"),category:val("projectCategory"),objective:val("projectObjective"),description:val("projectDescription"),previewUrl:val("projectPreviewUrl"),visitUrl:val("projectVisitUrl"),image:val("projectImage"),detailsUrl:val("projectDetailsUrl"),published:$("projectPublished")?.checked!==false,updatedAt:serverTimestamp()};if(id)await updateDoc(doc(db,"portfolioProjects",id),data);else await addDoc(collection(db,"portfolioProjects"),{...data,createdAt:serverTimestamp()});alert("Project published ✓");}catch(err){alert("Could not publish project: "+err.message);}}
-function loadProjects(){const host=$("adminProjectList");if(!host)return;onSnapshot(collection(db,"portfolioProjects"),s=>{projects.clear();s.forEach(d=>projects.set(d.id,{id:d.id,...d.data()}));host.innerHTML=projects.size?[...projects.values()].map(p=>`<div class="commerce-item"><div><strong>${esc(p.title||"Untitled")}</strong><small>${esc(p.category||"PROJECT")}</small></div></div>`).join(""):'<div class="empty-state">No projects yet.</div>';});}
+function loadProducts(){const host=$("adminProductList");if(!host)return;onSnapshot(collection(db,"storeProducts"),s=>{products.clear();s.forEach(d=>products.set(d.id,{id:d.id,...d.data()}));host.innerHTML=products.size?[...products.values()].map(p=>{const img=p.previewImages?.[0]||"";const initial=esc((p.name||"P").trim().charAt(0).toUpperCase());return `<div class="commerce-item"><div class="product-thumb">${img?`<img src="${esc(img)}" alt="${esc(p.name||"Product")}">`:initial}</div><div class="product-copy"><strong>${esc(p.name||"Untitled")}</strong><div class="product-meta"><span class="product-price">${esc(p.currency||"PHP")} ${Number(p.price||0).toFixed(2)}</span><span class="product-stock">Stock ${Number(p.stock||0)}</span><span class="product-status">${p.active===false?"Hidden":"Published"}</span></div></div><div class="commerce-item-actions"><button type="button" data-edit-product="${p.id}">Edit</button>${/^https?:\/\//i.test(p.previewUrl || "") ? `<button type="button" data-project-from-product="${esc(p.id)}">Add to Live Projects</button>` : ""}<button type="button" class="danger" data-delete-product="${p.id}">Delete</button></div></div>`;}).join(""):'<div class="empty-state">No products yet.</div>';},err=>host.innerHTML=`<div class="empty-state">${esc(err.message)}</div>`);}
+const projectFields = {
+  projectTitle: "title", projectCategory: "category", projectObjective: "objective",
+  projectDescription: "description", projectPreviewUrl: "previewUrl",
+  projectVisitUrl: "visitUrl", projectImage: "image", projectDetailsUrl: "detailsUrl"
+};
+const projectForm = $("projectForm");
+const projectStatus = $("projectStatus");
+const saveProjectButton = $("saveProjectBtn");
+
+function fillProject(project = {}) {
+  projectForm.reset();
+  $("projectId").value = project.id || "";
+  for (const [field, key] of Object.entries(projectFields)) $(field).value = project[key] || "";
+  $("projectPublished").checked = project.id ? project.published === true : true;
+  $("projectFormTitle").textContent = project.id ? "Edit project" : "Add project";
+  saveProjectButton.textContent = project.id ? "Save project" : "Publish project";
+  projectStatus.textContent = "";
+}
+
+async function saveProject(event) {
+  event.preventDefault();
+  if (!allowed(auth.currentUser) || saveProjectButton.disabled) return;
+  const id = val("projectId");
+  const data = Object.fromEntries(Object.entries(projectFields).map(([field, key]) => [key, val(field)]));
+  if (!data.title || !/^https?:\/\//i.test(data.visitUrl)) {
+    projectStatus.textContent = "Enter a project title and an HTTPS or HTTP website URL.";
+    return;
+  }
+  data.published = $("projectPublished").checked;
+  data.updatedAt = serverTimestamp();
+  const file = $("projectImageFile").files[0];
+  saveProjectButton.disabled = true;
+  $("clearProjectForm").disabled = true;
+  try {
+    if (file) {
+      projectStatus.textContent = "Uploading preview…";
+      data.image = await image(file, "portfolio/previews");
+    }
+    projectStatus.textContent = "Saving project…";
+    if (id) await updateDoc(doc(db, "portfolioProjects", id), data);
+    else await addDoc(collection(db, "portfolioProjects"), { ...data, createdAt: serverTimestamp() });
+    fillProject();
+    projectStatus.textContent = data.published
+      ? "Published in homepage Live Projects."
+      : "Saved as a draft. Enable Publish in Live Projects when ready.";
+  } catch (error) {
+    console.error("Project publish failed:", error);
+    projectStatus.textContent = `Could not save project: ${error.message}`;
+  } finally {
+    saveProjectButton.disabled = false;
+    $("clearProjectForm").disabled = false;
+  }
+}
+
+function loadProjects() {
+  const host = $("adminProjectList");
+  onSnapshot(collection(db, "portfolioProjects"), snapshot => {
+    projects = new Map(snapshot.docs.map(record => [record.id, { ...record.data(), id: record.id }]));
+    host.innerHTML = projects.size ? [...projects.values()].map(project => `
+      <div class="commerce-item">
+        <div><strong>${esc(project.title || "Untitled")}</strong>
+          <small>${project.published === true ? "Published in Live Projects" : "Draft"}</small>
+        </div>
+        <button type="button" class="text-btn" data-edit-project="${esc(project.id)}">Edit</button>
+      </div>`).join("") : '<div class="empty-state">No projects yet.</div>';
+  }, error => {
+    console.error("Could not load projects:", error);
+    host.textContent = "Could not load projects. Refresh to retry.";
+  });
+}
+
+$("adminProjectList").addEventListener("click", event => {
+  const button = event.target.closest("[data-edit-project]");
+  if (!button || saveProjectButton.disabled) return;
+  const project = projects.get(button.dataset.editProject);
+  if (!project) return;
+  fillProject(project);
+  $("projectTitle").focus();
+});
+$("clearProjectForm").addEventListener("click", () => fillProject());
+$("adminProductList").addEventListener("click", event => {
+  const button = event.target.closest("[data-project-from-product]");
+  if (!button || saveProjectButton.disabled) return;
+  const product = products.get(button.dataset.projectFromProduct);
+  if (!product || !/^https?:\/\//i.test(product.previewUrl || "")) return;
+  const existing = [...projects.values()].find(project =>
+    [project.visitUrl, project.previewUrl].includes(product.previewUrl)
+  );
+  fillProject(existing || {
+    title: product.name,
+    description: product.description,
+    previewUrl: product.previewUrl,
+    visitUrl: product.previewUrl,
+    image: product.previewImages?.[0]
+  });
+  window.goAdminCommerce("projects");
+  $("projectTitle").focus();
+});
+
+
 document.addEventListener("click",e=>{const a=e.target.closest("[data-edit-product]");if(a)return editProduct(products.get(a.dataset.editProduct));const d=e.target.closest("[data-delete-product]");if(d&&allowed(auth.currentUser)&&confirm("Delete this product?"))deleteDoc(doc(db,"storeProducts",d.dataset.deleteProduct));});
 $("productForm")?.addEventListener("submit",saveProduct,true);$("clearProductForm")?.addEventListener("click",clearProduct);$("projectForm")?.addEventListener("submit",saveProject);document.querySelectorAll(".commerce-tab").forEach(b=>b.addEventListener("click",()=>{document.querySelectorAll(".commerce-tab").forEach(x=>x.classList.toggle("active",x===b));document.querySelectorAll(".commerce-panel").forEach(x=>x.hidden=x.id!==`commerce-${b.dataset.commerceTab}`);}));
 onAuthStateChanged(auth,u=>{if(allowed(u)){button("Publish Product");loadProducts();loadProjects();}else button(u?"Unauthorized account":"Sign in to publish");});
