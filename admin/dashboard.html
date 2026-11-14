@@ -81,7 +81,7 @@
           <div><p class="kicker">STEADFAST ADMIN</p><h1 id="pageTitle">Dashboard</h1></div>
         </div>
         <div class="top-actions">
-          <button class="icon-btn" type="button" aria-label="Notifications"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span class="notification-dot">3</span></button>
+          <button class="icon-btn" type="button" id="quoteNotifications" aria-label="View new quotations"><svg viewBox="0 0 24 24"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span class="notification-dot" id="quoteNotificationCount" hidden></span></button>
           <button class="icon-btn" type="button" aria-label="Toggle dark mode"><svg viewBox="0 0 24 24"><path d="M20.8 14.7A8.4 8.4 0 0 1 9.3 3.2 8.9 8.9 0 1 0 20.8 14.7Z"/></svg></button>
           <div class="account"><div class="account-details"><strong id="adminName">Checking account…</strong><span id="adminEmail">Authenticating…</span></div><span class="avatar-ring"><img id="adminAvatar" class="avatar" src="../assets/steadfast-mark.png" alt="STEADFAST"></span><span class="chevron"><svg viewBox="0 0 24 24"><path d="m7 10 5 5 5-5"/></svg></span></div>
         </div>
@@ -90,20 +90,20 @@
       <section id="dashboard" class="section active">
         <div class="welcome"><div><span>Welcome back, Cliff.</span><h2>Manage your website inquiries.</h2></div><a class="primary" href="../index.html#quote">View Website</a></div>
         <div class="metrics">
-          <article><span>New Quotes</span><strong id="metricNew">0</strong><small>Needs review</small></article>
-          <article><span>Pending</span><strong id="metricPending">0</strong><small>Awaiting response</small></article>
-          <article><span>Contacted</span><strong id="metricOpen">0</strong><small>Conversation started</small></article>
-          <article><span>In Progress</span><strong id="metricHold">0</strong><small>On hold / active</small></article>
-          <article><span>Converted</span><strong id="metricSolved">0</strong><small>Solved tickets</small></article>
+          <article><span>Total Quotes</span><strong id="metricTotal">—</strong><small>All website submissions</small></article>
+          <article><span>Pending</span><strong id="metricPending">—</strong><small>Awaiting response</small></article>
+          <article><span>Open</span><strong id="metricOpen">—</strong><small>Needs attention</small></article>
+          <article><span>On Hold</span><strong id="metricHold">—</strong><small>Paused tickets</small></article>
+          <article><span>Solved</span><strong id="metricSolved">—</strong><small>Resolved tickets</small></article>
         </div>
         <div class="grid two">
-          <article class="panel wide"><div class="panel-head"><div><h3>Recent Website Quotations</h3><p>Latest client submissions.</p></div><button class="text-btn" data-section-link="quotations">View all</button></div><div class="table-wrap"><table><thead><tr><th>Client</th><th>Website</th><th>Budget</th><th>Status</th><th>Date</th></tr></thead><tbody id="dashboardRecentRows"><tr><td colspan="5">Loading quotations…</td></tr></tbody></table></div></article>
-          <article class="panel"><div class="panel-head"><div><h3>Integrations</h3><p>Connection status.</p></div></div><div class="integration"><b>Gmail</b><span class="connected" id="dashboardGmailStatus">Connected</span></div><div class="integration"><b>Google Sheets</b><span class="connected">Connected</span></div></article>
+          <article class="panel wide"><div class="panel-head"><div><h3>Recent Website Quotations</h3><p>Latest client submissions.</p></div><div><button class="text-btn" id="retryDashboardQuotations" type="button">Retry</button> <button class="text-btn" data-section-link="quotations">View all</button></div></div><div class="table-wrap"><table><thead><tr><th>Client</th><th>Website</th><th>Budget</th><th>Status</th><th>Date</th></tr></thead><tbody id="dashboardRecentRows"><tr><td colspan="5">Loading quotations…</td></tr></tbody></table></div></article>
+          <article class="panel"><div class="panel-head"><div><h3>Integrations</h3><p>Connection status.</p></div></div><div class="integration"><b>Gmail</b><span id="dashboardGmailStatus">Status unavailable</span></div><div class="integration"><b>Google Sheets</b><span>Status unavailable</span></div></article>
         </div>
       </section>
 
       <section id="quotations" class="section">
-        <div class="panel"><div class="panel-head"><div><p class="kicker">LIVE INTAKE</p><h2>Website Quotations</h2><p>Live submissions from the STEADFAST website.</p></div><span class="live-badge">● LIVE</span></div><div class="table-wrap"><table id="quotationTable"><thead><tr><th>Ticket</th><th>Client</th><th>Website</th><th>Estimate</th><th>Status</th><th>Received</th><th></th></tr></thead><tbody id="quotationRows"><tr><td colspan="7">Loading quotations…</td></tr></tbody></table></div></div>
+        <div class="panel"><div class="panel-head"><div><p class="kicker">LIVE INTAKE</p><h2>Website Quotations</h2><p>Live submissions from the STEADFAST website.</p></div><div><span class="live-badge" id="quotationStatus" role="status">LOADING</span> <button class="text-btn" id="retryQuotationList" type="button">Retry</button></div></div><div class="table-wrap"><table id="quotationTable"><thead><tr><th>Ticket</th><th>Client</th><th>Website</th><th>Estimate</th><th>Status</th><th>Received</th><th></th></tr></thead><tbody id="quotationRows"><tr><td colspan="7">Loading quotations…</td></tr></tbody></table></div></div>
         <div class="quote-detail" id="quoteDetail" hidden><div class="panel"><div class="panel-head"><div><p class="kicker">QUOTE DETAILS</p><h2 id="detailName">Client</h2><p id="detailEmail">email</p></div><button class="text-btn" id="closeQuoteDetail">Close</button></div><div class="detail-grid"><div><b>Ticket</b><span id="detailTicket">—</span></div><div><b>Website</b><span id="detailService">—</span></div><div><b>Estimate</b><span id="detailEstimate">—</span></div><div><b>Country</b><span id="detailCountry">—</span></div><div><b>Next step</b><span id="detailNextStep">—</span></div></div><div class="detail-block"><b>Requirements</b><p id="detailRequirements">—</p></div><div class="detail-block"><b>Selected add-ons</b><p id="detailAddons">—</p></div><div class="reply-box"><div><b>Reply to client</b><small>For the full conversation view, open this quotation under Support Tickets.</small></div><div class="reply-actions"><button class="primary" id="openTicketFromQuote" type="button">Open Support Ticket</button></div></div></div></div>
       </section>
 
@@ -148,11 +148,11 @@
                 <div class="composer-content" id="replyComposer">
                   <div class="annotation-row"><span class="annotation-icon"><svg viewBox="0 0 24 24"><path d="M7 5h10M7 9h10M7 13h6M5 3h14a2 2 0 0 1 2 2v14l-4-3H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Z"/></svg></span><div><label for="replyAnnotation">Pre-send annotation <span>Internal</span></label><input id="replyAnnotation" type="text" placeholder="Optional note for your records…"></div></div>
                   <textarea id="adminReply" rows="5" placeholder="Type your reply here…"></textarea>
-                  <div class="composer-footer"><div class="compose-tools"><button type="button" aria-label="Attach file"><svg viewBox="0 0 24 24"><path d="m20 12-7.1 7.1a5 5 0 0 1-7.1-7.1L13 4.8a3.5 3.5 0 0 1 5 5L10.8 17a2 2 0 1 1-2.8-2.8L15.4 6"/></svg></button><button type="button" aria-label="Insert image"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="1.5"/><path d="m5 17 4-4 3 3 2-2 5 5"/></svg></button><button type="button" aria-label="Emoji"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.3 2 4 2 4-2 4-2M8.5 9.5h.01M15.5 9.5h.01"/></svg></button></div><div class="send-zone"><span class="email-status" id="ticketStatusMessage"></span><select id="activeTicketStatus" class="composer-status" aria-label="Ticket status"><option value="Open">Open</option><option value="Pending">Pending</option><option value="On Hold">On Hold</option><option value="Solved">Solved</option><option value="Merged" disabled>Merged</option><option value="__merge__">🔗 Merge</option></select><button class="send-btn" id="sendAdminReply" type="button"><svg viewBox="0 0 24 24"><path d="m4 4 17 8-17 8 3-8-3-8Zm3 8h14"/></svg>Send Reply</button></div></div>
+                  <div class="composer-footer"><div class="compose-tools"><button type="button" aria-label="Attach file"><svg viewBox="0 0 24 24"><path d="m20 12-7.1 7.1a5 5 0 0 1-7.1-7.1L13 4.8a3.5 3.5 0 0 1 5 5L10.8 17a2 2 0 1 1-2.8-2.8L15.4 6"/></svg></button><button type="button" aria-label="Insert image"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="1.5"/><path d="m5 17 4-4 3 3 2-2 5 5"/></svg></button><button type="button" aria-label="Emoji"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.3 2 4 2 4-2 4-2M8.5 9.5h.01M15.5 9.5h.01"/></svg></button></div><div class="send-zone"><span class="email-status" id="ticketStatusMessage"></span><select id="activeTicketStatus" class="composer-status" aria-label="Ticket status"><option value="Open">Open</option><option value="Pending">Pending</option><option value="On Hold">On Hold</option><option value="Solved">Solved</option><option value="Merged" disabled>Merged</option></select><button class="send-btn" id="sendAdminReply" type="button"><svg viewBox="0 0 24 24"><path d="m4 4 17 8-17 8 3-8-3-8Zm3 8h14"/></svg>Send Reply</button></div></div>
                 </div>
                 <div class="composer-content note-mode" id="noteComposer" hidden>
                   <textarea id="internalNote" rows="5" placeholder="Add a private internal note for the ticket…"></textarea>
-                  <div class="composer-footer"><div class="note-tip">Internal notes stay inside STEADFAST and are never emailed to the customer.</div><button class="note-btn" id="saveInternalNote" type="button"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 4v5h8V4M8 13h8M8 17h5"/></svg>Save Internal Note</button></div>
+                  <div class="composer-footer"><span class="email-status" id="noteStatus" role="status"></span><div class="note-tip">Internal notes stay inside STEADFAST and are never emailed to the customer.</div><button class="note-btn" id="saveInternalNote" type="button"><svg viewBox="0 0 24 24"><path d="M5 4h14v16H5zM8 4v5h8V4M8 13h8M8 17h5"/></svg>Save Internal Note</button></div>
                 </div>
               </div>
             </div>
@@ -221,7 +221,7 @@
       <section id="leads" class="section"><div class="empty-panel"><h2>Leads</h2><p>Track new leads, contacted leads, proposal stages, and conversions.</p></div></section>
       <section id="clients" class="section"><div class="empty-panel"><h2>Clients</h2><p>Manage approved and active website clients.</p></div></section>
       <section id="email" class="section">
-        <div class="panel email-panel"><div class="panel-head"><div><p class="kicker">STEADFAST ADMIN</p><h2>Email / Gmail</h2><p>Send customer messages through your authorized Gmail account.</p></div><span class="gmail-status" id="gmailStatus">READY</span></div>
+        <div class="panel email-panel"><div class="panel-head"><div><p class="kicker">STEADFAST ADMIN</p><h2>Email / Gmail</h2><p>Send customer messages through your authorized Gmail account.</p></div><span class="gmail-status" id="gmailStatus">STATUS UNAVAILABLE</span></div>
           <div class="email-grid"><div class="email-composer"><label>To<input id="emailTo" type="email" placeholder="customer@example.com"></label><label>Subject<input id="emailSubject" type="text" value="Regarding your STEADFAST website quotation"></label><label>Message<textarea id="emailBody" rows="10" placeholder="Write your message..."></textarea></label><div class="email-actions"><button class="primary" id="sendEmailBtn" type="button">Send via Gmail</button><button class="text-btn" id="clearEmailBtn" type="button">Clear</button></div><p class="email-status" id="gmailEmailStatus"></p><small class="email-note">Gmail sending is handled by your Google Apps Script Web App. No Gmail password is stored in STEADFAST.</small></div><aside class="email-template-card"><span class="template-label">QUICK TEMPLATE</span><h3>Quotation follow-up</h3><p>Use this after reviewing a customer's website requirements.</p><button class="text-btn" id="useQuoteTemplate" type="button">Use template</button></aside></div>
         </div>
       </section>
@@ -247,7 +247,7 @@
   });
   </script>
   <script src="../email-config.js"></script>
-  <script type="module" src="./dashboard.js?v=33"></script>
+  <script type="module" src="./dashboard.js?v=34"></script>
   <script type="module" src="./commerce-admin.js?v=33"></script>
 </body>
 </html>
